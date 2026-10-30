@@ -1,0 +1,2381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Re-sourcing</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Re-sourcing">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="format-detection" content="telephone=no">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#020503;
+    --panel:#050e07;
+    --panel-2:#08170b;
+    --border:#194a24;
+    --border-bright:#2a7d3d;
+    --green:#3dff7a;
+    --green-mid:#26c95c;
+    --green-dim:#2f7a45;
+    --green-faint:#1c4a29;
+    --danger:#ff5b4a;
+    --glow:0 0 6px rgba(61,255,122,.45);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--green); height:100%;
+    font-family:"JetBrains Mono", ui-monospace, "Courier New", monospace; -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;}
+  body::before{content:""; position:fixed; inset:0; pointer-events:none; z-index:90; opacity:.5;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,.55) 0px, rgba(0,0,0,.55) 1px, transparent 1px, transparent 3px);}
+
+  /* ---------- header: title + stats ---------- */
+  .header{position:fixed; top:0; left:0; right:0; z-index:20; background:var(--panel); border-bottom:1px solid var(--border);}
+  .topbar{height:44px; display:flex; align-items:center; justify-content:center;}
+  .logo{font-family:"Orbitron", sans-serif; font-weight:800; font-size:19px; letter-spacing:.03em;
+    color:var(--green); text-shadow:var(--glow);}
+  .statsbar{padding:6px 14px 12px; display:flex; flex-direction:column; gap:7px; border-top:1px dashed var(--border);}
+  .stat-row{display:flex; align-items:center; gap:8px;}
+  .stat-label{font-size:9.5px; width:32px; flex-shrink:0; color:var(--green-dim); letter-spacing:.03em;}
+  .stat-track{flex:1; height:7px; background:var(--panel-2); border:1px solid var(--border); position:relative; overflow:hidden;}
+  .stat-fill{height:100%; width:100%; background:var(--green); box-shadow:var(--glow); transition:width .25s ease; position:relative; overflow:hidden;}
+  .stat-fill.hp{background:var(--green);}
+  .stat-fill.food{background:var(--green-mid);}
+  .stat-fill.nrg{background:var(--green);}
+  .armor-fill{position:absolute; top:0; left:0; height:100%; width:0%; transition:width .25s ease;
+    background:repeating-linear-gradient(135deg, rgba(160,168,160,.65) 0 3px, rgba(120,128,120,.65) 3px 6px);
+    border-right:1px solid rgba(200,205,200,.8); z-index:2;}
+  .stat-fill.low{background:var(--danger); box-shadow:0 0 6px rgba(255,91,74,.5);}
+  .stat-val{font-size:10px; width:54px; flex-shrink:0; text-align:right; color:var(--green); font-variant-numeric:tabular-nums;}
+
+  .app{padding-top:126px; padding-bottom:74px; min-height:100%;}
+  .screen{display:none; padding:16px 14px 30px; max-width:460px; margin:0 auto;}
+  .screen.active{display:block;}
+
+  h2.section-title{font-size:13px; letter-spacing:.04em; text-transform:uppercase; color:var(--green-dim);
+    margin:0 0 12px; font-weight:600; display:flex; align-items:baseline; gap:8px;}
+  h2.section-title::before{content:"// "}
+  .bagcount{font-size:10.5px; color:var(--green-faint); text-transform:none; letter-spacing:0;}
+
+  /* ---------- bottom tab bar ---------- */
+  .tabbar{position:fixed; left:0; right:0; bottom:0; height:62px; display:flex; z-index:20;
+    background:var(--panel); border-top:1px solid var(--border);}
+  .tab-btn{flex:1; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;
+    letter-spacing:.03em; text-transform:uppercase; color:var(--green-faint); cursor:pointer;
+    border-top:2px solid transparent;}
+  .tab-btn.active{color:var(--green); border-top-color:var(--green); background:var(--panel-2); text-shadow:var(--glow);}
+  .tab-btn.locked{color:var(--green-faint); cursor:default; opacity:.6;}
+
+  /* ---------- expedition: location select ---------- */
+  .loc-grid{display:flex; flex-direction:column; gap:12px;}
+  .loc-card{position:relative; overflow:hidden; min-height:132px; border:1px solid var(--border);
+    background:var(--panel-2); padding:16px; display:flex; flex-direction:column; justify-content:space-between;
+    cursor:pointer;}
+  .loc-card:active{border-color:var(--border-bright);}
+  .loc-bg{position:absolute; inset:0; z-index:0; display:flex; align-items:center; justify-content:center;
+    font-size:96px; line-height:1; opacity:.22; filter:grayscale(.3);}
+  .loc-shade{position:absolute; left:0; right:0; bottom:0; height:62%; z-index:1;
+    background:linear-gradient(to top, var(--panel-2) 0%, rgba(8,23,11,.75) 55%, transparent 100%);}
+  .loc-name{position:relative; z-index:2; align-self:flex-start; font-size:15px; font-weight:700; color:var(--green);
+    text-transform:uppercase; letter-spacing:.02em; text-shadow:0 0 8px rgba(0,0,0,.8);}
+  .loc-blurb{position:relative; z-index:2; font-size:12px; color:var(--green); line-height:1.5;
+    text-shadow:0 0 8px rgba(0,0,0,.8);}
+  .loc-food-note{position:relative; z-index:2; font-size:10px; color:var(--green-faint); text-shadow:0 0 8px rgba(0,0,0,.8);}
+
+  /* ---------- expedition: search screen ---------- */
+  .search-layout{display:flex; gap:14px; align-items:stretch;}
+  .search-grids{flex:1; display:flex; flex-direction:column; justify-content:space-between; gap:14px; min-width:0;}
+  .grid-label{font-size:10.5px; color:var(--green-dim); text-transform:uppercase; letter-spacing:.03em; margin-bottom:6px;}
+  .chance-grid, .found-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+  .chance-cell{border:1px dashed var(--border); padding:6px 7px; font-size:11px; display:flex; align-items:center; gap:5px;}
+  .chance-cell.pickup{border-style:solid; border-color:var(--border-bright); cursor:pointer;}
+  .chance-cell.pickup:active{background:var(--green-faint);}
+  .c-icon{font-size:14px;}
+  .c-pct{margin-left:auto; font-size:10.5px; color:var(--green); text-shadow:var(--glow);}
+  .empty-note{font-size:11px; color:var(--green-faint); padding:6px 0;}
+
+  /* ---------- alchemy ---------- */
+  #screen-alchemy{position:relative; overflow:hidden;}
+  .alchemy-bg{position:absolute; inset:0; z-index:0; display:flex; align-items:center; justify-content:center;
+    font-size:200px; line-height:1; opacity:.16; filter:grayscale(.3); pointer-events:none;}
+  .alchemy-bg::after{content:""; position:absolute; inset:0;
+    background:linear-gradient(to bottom, var(--bg) 0%, rgba(2,5,3,.4) 30%, transparent 65%);}
+  .alchemy-fg{position:relative; z-index:1;}
+  .alchemy-arc{position:relative; width:100%; height:175px; margin-bottom:20px;}
+  .arc-chip{position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column;
+    align-items:center; gap:3px; border:1px solid var(--border); background:var(--panel-2); padding:7px 8px; min-width:42px;}
+  .arc-chip.ok{border-color:var(--border-bright);}
+  .arc-chip .arc-icon{font-size:18px;}
+  .arc-chip .arc-qty{font-size:9.5px; color:var(--green-faint); font-variant-numeric:tabular-nums;}
+  .arc-chip.ok .arc-qty{color:var(--green);}
+  .craft-bar{position:relative; width:100%; height:52px; border:1px solid var(--border-bright);
+    background:var(--panel-2); overflow:hidden; display:flex; align-items:center; justify-content:center;
+    touch-action:none; cursor:pointer; margin-top:60px;}
+  .craft-bar-fill{position:absolute; left:0; top:0; height:100%; width:0%; background:var(--green-faint); z-index:1;}
+  .craft-bar-label{position:relative; z-index:2; font-family:"Orbitron", sans-serif; font-size:13px;
+    letter-spacing:.05em; color:var(--green); text-shadow:var(--glow);}
+  .empty-note.span2{grid-column:1/-1;}
+
+  .search-circle-col{width:126px; flex-shrink:0; display:flex; align-items:center; justify-content:center;}
+  .search-ring{position:relative; width:126px; height:126px; touch-action:none;}
+  .search-ring svg{transform:rotate(-90deg); width:100%; height:100%;}
+  .search-ring circle{fill:none; stroke-width:6;}
+  .ring-bg{stroke:var(--border);}
+  .ring-fg{stroke:var(--green); filter:drop-shadow(0 0 5px rgba(61,255,122,.6)); stroke-linecap:round;}
+  .search-btn{position:absolute; inset:8px; border-radius:50%; border:1px solid var(--border-bright);
+    background:var(--panel-2); color:var(--green); font-size:11.5px; font-weight:700; letter-spacing:.02em;
+    display:flex; align-items:center; justify-content:center; text-align:center; cursor:pointer; text-transform:uppercase;}
+  .search-btn.active{background:var(--green-faint); box-shadow:var(--glow);}
+
+  .search-caption{margin-top:16px; font-size:11px; color:var(--green-faint); text-align:center;}
+  .zone-name-line{font-size:13px; font-weight:700; color:var(--green); text-transform:uppercase; margin-bottom:4px;}
+  .zone-blurb-line{font-size:11px; color:var(--green-dim); margin-bottom:16px; line-height:1.5;}
+
+  .back-btn{margin-top:20px; width:100%; font-family:inherit; font-size:12px; font-weight:700; padding:10px;
+    border:1px solid var(--border-bright); background:var(--panel-2); color:var(--green); cursor:pointer;}
+  .back-btn:active{background:var(--green-faint);}
+
+  /* ---------- inventory ---------- */
+  .equip-row{display:flex; gap:6px; margin:0 0 22px;}
+  .equip-slot{position:relative; flex:1; aspect-ratio:1/1; border:1px dashed var(--border); cursor:default;
+    background:var(--panel-2); overflow:hidden; display:flex; align-items:flex-end; justify-content:center;}
+  .equip-slot.filled{border-style:solid; border-color:var(--border-bright); cursor:pointer;}
+  .equip-slot.filled:active{background:var(--green-faint);}
+  .equip-slot .slot-icon{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:22px; opacity:.4; filter:grayscale(.2);}
+  .equip-slot .slot-label{position:relative; z-index:1; font-size:6.6px; letter-spacing:.02em;
+    color:var(--green-dim); padding-bottom:3px; text-transform:uppercase; text-align:center;}
+  .unequip-panel{display:none; align-items:center; justify-content:space-between; gap:10px;
+    border:1px solid var(--border-bright); background:var(--panel-2); padding:8px 10px; margin:8px 0 22px;
+    font-size:11px; color:var(--green-dim);}
+  .unequip-panel.show{display:flex;}
+  .btn.small{width:auto; padding:7px 12px; font-size:11px; flex-shrink:0;}
+  .inv-grid{display:flex; flex-direction:column;}
+  .inv-row{display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px dashed var(--border);
+    flex-wrap:wrap; cursor:pointer;}
+  .inv-row:last-child{border-bottom:1px dashed var(--border);}
+  .inv-icon{font-size:18px; width:24px; text-align:center;}
+  .inv-info{flex:1; min-width:0;}
+  .inv-name{font-size:13px; color:var(--green);}
+  .inv-zone{font-size:10.5px; color:var(--green-faint);}
+  .inv-qty{font-size:14px; font-weight:700; color:var(--green); font-variant-numeric:tabular-nums; text-shadow:var(--glow); flex-shrink:0;}
+  .eat-btn{font-family:inherit; font-size:10.5px; font-weight:700; padding:6px 9px; border:1px solid var(--border-bright);
+    background:var(--panel-2); color:var(--green); cursor:pointer; flex-shrink:0;}
+  .eat-btn:active{background:var(--green-faint);}
+  .heal-btn{font-family:inherit; font-size:10.5px; font-weight:700; padding:6px 9px; border:1px solid var(--border-bright);
+    background:var(--panel-2); color:var(--green); cursor:pointer; flex-shrink:0;}
+  .heal-btn:active{background:var(--green-faint);}
+  .study-btn{font-family:inherit; font-size:10.5px; font-weight:700; padding:6px 9px; border:1px solid var(--border-bright);
+    background:var(--panel-2); color:var(--green); cursor:pointer; flex-shrink:0;}
+  .study-btn:active{background:var(--green-faint);}
+  .equip-btn{font-family:inherit; font-size:10.5px; font-weight:700; padding:6px 9px; border:1px solid var(--border-bright);
+    background:var(--panel-2); color:var(--green); cursor:pointer; flex-shrink:0;}
+  .equip-btn:active{background:var(--green-faint);}
+  .discard-btn{display:none; font-family:inherit; font-size:10.5px; font-weight:700; padding:6px 9px;
+    border:1px solid var(--danger); background:var(--panel-2); color:var(--danger); cursor:pointer;
+    width:100%; margin-top:6px; order:99;}
+  .inv-row.open .discard-btn{display:block;}
+  .discard-btn:active{background:rgba(255,91,74,.15);}
+  .empty-note-full{font-size:12px; color:var(--green-faint); padding:14px 0;}
+
+  /* ---------- crafting ---------- */
+  .recipe{border:1px solid var(--border); padding:12px; margin-bottom:10px;}
+  .recipe-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .recipe-icon{font-size:18px;}
+  .recipe-name{font-size:13.5px; font-weight:700; color:var(--green); flex:1;}
+  .recipe-desc{font-size:11px; color:var(--green-dim); margin:-4px 0 9px; line-height:1.5;}
+  .recipe-needs{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;}
+  .need-tag{font-size:11px; padding:4px 7px; border:1px solid var(--border); color:var(--green-dim);}
+  .need-tag.ok{color:var(--green);}
+  .need-tag.low{color:#7a3030; border-color:#4a1c1c;}
+  .btn{font-family:inherit; font-size:12px; font-weight:700; padding:9px 14px; cursor:pointer;
+    border:1px solid var(--border-bright); background:var(--panel-2); color:var(--green); width:100%;}
+  .btn::before{content:"[ "}
+  .btn::after{content:" ]"}
+  .btn:disabled{opacity:.3; cursor:default;}
+  .btn:active:not(:disabled){background:var(--green-faint);}
+
+  /* ---------- death screen ---------- */
+  .death-overlay{position:fixed; inset:0; z-index:200; pointer-events:none;}
+  .death-overlay.show{pointer-events:auto;}
+  .shards{position:absolute; inset:0; overflow:hidden;}
+  .shard{position:absolute; background:var(--panel-2); border:1px solid var(--border-bright);
+    box-shadow:inset 0 0 16px rgba(61,255,122,.15); opacity:0;}
+  .shard.fall{animation:shardFall 900ms cubic-bezier(.6,0,.85,.35) forwards;}
+  @keyframes shardFall{
+    0%{opacity:1; transform:translateY(0) rotate(0deg);}
+    100%{opacity:0; transform:translateY(140vh) rotate(var(--rot));}
+  }
+  .death-content{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:20px; opacity:0; transition:opacity .6s ease; padding:0 30px; text-align:center;}
+  .death-content.show{opacity:1;}
+  .death-title{font-family:"Orbitron", sans-serif; font-size:32px; font-weight:800; color:var(--danger);
+    text-shadow:0 0 16px rgba(255,91,74,.7); letter-spacing:.06em;}
+  .death-sub{font-size:12px; color:var(--green-dim); line-height:1.6;}
+  .death-restart{width:auto; padding:12px 28px; border-color:var(--danger); color:var(--danger);}
+  .death-restart:active{background:rgba(255,91,74,.15);}
+
+  /* ---------- battle ---------- */
+  .battle-overlay{position:fixed; inset:0; z-index:150; background:var(--bg); display:none;
+    flex-direction:column; align-items:center; justify-content:center; padding:16px;}
+  .battle-overlay.show{display:flex;}
+  .battle-msg{font-family:"Orbitron", sans-serif; font-size:15px; color:var(--danger); text-align:center;
+    letter-spacing:.03em; text-shadow:0 0 10px rgba(255,91,74,.6); margin-bottom:10px; min-height:20px;}
+  .battle-player-hp{display:flex; align-items:center; gap:8px; width:min(84vw,340px); margin-bottom:12px;}
+  .battle-field{position:relative; width:min(84vw,340px); height:min(84vw,340px);
+    border:2px solid var(--border-bright); background:var(--panel); overflow:hidden;}
+  .battle-unit{position:absolute; width:30px; height:30px; font-size:22px; line-height:30px; text-align:center;
+    transform:translate(-50%,-50%);}
+  .battle-unit.player{z-index:3;}
+  .battle-unit.monster{z-index:2;}
+  .monster-hp-track{position:absolute; top:-11px; left:50%; transform:translateX(-50%); width:42px; height:5px;
+    background:var(--panel-2); border:1px solid var(--border);}
+  .monster-hp-fill{height:100%; width:100%; background:var(--danger); transition:width .15s ease;}
+  .battle-unit.pop-in{animation:popIn .35s ease-out;}
+  @keyframes popIn{ from{transform:translate(-50%,-50%) scale(0.15); opacity:0;} to{transform:translate(-50%,-50%) scale(1); opacity:1;} }
+  .battle-unit.ooze{text-shadow:0 0 7px rgba(255,60,60,.9);}
+  .joystick-base{position:absolute; right:16px; bottom:16px; width:92px; height:92px; border-radius:50%;
+    border:1px solid var(--border-bright); background:var(--panel-2); touch-action:none;}
+  .joystick-knob{position:absolute; left:50%; top:50%; width:38px; height:38px; margin:-19px 0 0 -19px;
+    border-radius:50%; background:var(--green); box-shadow:var(--glow); pointer-events:none;}
+  .battle-hint{font-size:11px; color:var(--green-faint); text-align:center; margin-top:14px; line-height:1.6;}
+
+  .dev-btn{display:block; width:100%; margin-top:26px; font-family:inherit; font-size:10.5px; font-weight:700; padding:9px;
+    border:1px dashed var(--green-dim); background:transparent; color:var(--green-dim); cursor:pointer;}
+  .dev-btn.on{border-style:solid; border-color:var(--green); color:var(--green); text-shadow:var(--glow);}
+
+  /* ---------- ui fade (for cutscenes) ---------- */
+  .header, .app, .tabbar{transition:opacity 1.8s ease;}
+  body.ui-hidden .header, body.ui-hidden .app, body.ui-hidden .tabbar{opacity:0; pointer-events:none;}
+
+  /* ---------- void syrup ritual ---------- */
+  .use-btn{font-family:inherit; font-size:10.5px; font-weight:700; padding:6px 9px; border:1px solid var(--border-bright);
+    background:var(--panel-2); color:var(--green); cursor:pointer; flex-shrink:0;}
+  .use-btn:active{background:var(--green-faint);}
+  .ritual-overlay{position:fixed; inset:0; z-index:160; background:var(--bg); display:none;
+    flex-direction:column; align-items:center; justify-content:center; padding:20px; opacity:0; transition:opacity 1.2s ease;}
+  .ritual-overlay.show{display:flex;}
+  .ritual-overlay.visible{opacity:1;}
+  .ritual-title{font-family:"Orbitron", sans-serif; font-size:14px; color:var(--green); text-shadow:var(--glow);
+    letter-spacing:.03em; margin-bottom:16px; text-align:center;}
+  .ritual-hp{display:flex; align-items:center; gap:8px; width:min(84vw,340px); margin-bottom:12px;}
+  .ritual-arena{position:relative; width:min(84vw,340px); height:min(84vw,340px);
+    border:2px solid var(--border-bright); background:var(--panel); overflow:hidden;}
+  .ritual-player{position:absolute; left:50%; top:80%; transform:translate(-50%,-50%); text-align:center; z-index:5;}
+  .ritual-player.hurt{animation:hurtBlink .45s steps(2) 1;}
+  @keyframes hurtBlink{50%{opacity:.15;}}
+  .ritual-boss{position:absolute; left:50%; top:22%; transform:translate(-50%,-50%) scale(.3); font-size:56px; line-height:1;
+    opacity:0; z-index:2; text-shadow:0 0 18px rgba(255,60,60,.95); transition:opacity 1.2s ease, transform 1.2s ease; pointer-events:none;}
+  .ritual-boss.show{opacity:1; transform:translate(-50%,-50%) scale(1);}
+  .ritual-boss.shake{animation:bossShake .4s linear 1;}
+  @keyframes bossShake{0%,100%{margin-left:0;} 25%{margin-left:-8px;} 75%{margin-left:8px;}}
+  .ritual-speech{position:absolute; left:8%; right:8%; top:40%; display:none; z-index:4; padding:10px 12px;
+    border:1px solid var(--border-bright); background:var(--panel-2); color:var(--green); font-size:12px; line-height:1.6; text-align:center;}
+  .ritual-bosshp{position:absolute; left:22%; right:22%; top:5%; height:9px; border:1px solid var(--border); background:var(--panel-2);
+    opacity:0; transition:opacity .4s ease; z-index:4;}
+  .ritual-bosshp-lost, .ritual-bosshp-fill{position:absolute; top:0; left:0; height:100%;}
+  .ritual-bosshp-lost{background:#fff; transition:width .4s ease;}
+  .ritual-bosshp-val{position:absolute; top:100%; left:0; right:0; margin-top:3px; text-align:center; font-size:10px;
+    color:var(--danger); font-variant-numeric:tabular-nums; letter-spacing:.03em;}
+  .ritual-bosshp-fill{background:var(--danger);}
+  .ritual-strike{position:absolute; left:6%; right:6%; top:56%; height:34px; border:2px solid var(--border-bright);
+    background:var(--panel-2); display:none; z-index:4;}
+  .strike-zone{position:absolute; left:40%; width:20%; top:0; bottom:0; background:rgba(61,255,122,.22);
+    border-left:1px solid var(--green); border-right:1px solid var(--green);}
+  .strike-cursor{position:absolute; top:-5px; bottom:-5px; width:4px; left:0; transform:translateX(-50%); background:#fff; box-shadow:0 0 8px #fff;}
+  .ritual-flash{position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); z-index:6; font-family:"Orbitron",sans-serif;
+    font-size:22px; font-weight:800; color:var(--green-dim); letter-spacing:.06em; pointer-events:none; animation:flashUp 1.2s ease-out forwards;}
+  @keyframes flashUp{0%{opacity:0; margin-top:10px;} 20%{opacity:1;} 100%{opacity:0; margin-top:-24px;}}
+  .ritual-fx{position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:4;}
+  .fx-ice{position:absolute; font-size:20px; line-height:1; transform:translate(-50%,-50%);}
+  .fx-warn{position:absolute; border:2px dashed #b57bff; border-radius:50%; background:rgba(150,80,255,.10);
+    transform:translate(-50%,-50%); animation:warnBlink .4s steps(2) infinite;}
+  .fx-pool{position:absolute; border:2px solid #b57bff; border-radius:50%; background:rgba(150,80,255,.55);
+    transform:translate(-50%,-50%); box-shadow:0 0 12px rgba(181,123,255,.7);}
+  .fx-beamwarn{position:absolute; left:0; right:0; height:14px; transform:translateY(-50%); display:flex; align-items:center;
+    border-top:1px dashed rgba(255,255,255,.7); border-bottom:1px dashed rgba(255,255,255,.7); background:rgba(255,255,255,.08);
+    font-size:10px; color:#fff; padding:0 4px; animation:warnBlink .4s steps(2) infinite;}
+  .fx-beam{position:absolute; height:14px; transform:translateY(-50%); background:#fff; box-shadow:0 0 12px #fff, 0 0 4px #fff;}
+  @keyframes warnBlink{50%{opacity:.35;}}
+  .ritual-joy{position:relative; right:auto; bottom:auto; display:none;}
+  .ritual-ctrl{display:none; align-items:center; justify-content:center; gap:28px; margin-top:12px;}
+  .ritual-heal{font-family:inherit; font-size:12px; font-weight:700; padding:16px 14px; border:1px solid var(--border-bright);
+    background:var(--panel-2); color:var(--green); cursor:pointer; touch-action:manipulation;}
+  .ritual-heal:active:not(:disabled){background:var(--green-faint);}
+  .ritual-heal:disabled{opacity:.3; cursor:default;}
+  .ritual-boss{transition:opacity 1.2s ease, transform 1.2s ease, top .9s ease;}
+  .ritual-boss.center{top:50%;}
+  .fx-aimwarn{position:absolute; height:12px; margin-top:-6px; transform-origin:0 50%; background:rgba(255,255,255,.10);
+    border-top:1px dashed rgba(255,255,255,.75); border-bottom:1px dashed rgba(255,255,255,.75); animation:warnBlink .4s steps(2) infinite;}
+  .fx-aimbeam{position:absolute; height:12px; margin-top:-6px; transform-origin:0 50%; background:#fff; box-shadow:0 0 12px #fff, 0 0 4px #fff;}
+  .fx-spikewarn{position:absolute; border:1px dashed var(--danger); background:rgba(255,91,74,.18); animation:warnBlink .4s steps(2) infinite;}
+  .fx-spikes{position:absolute; inset:0;}
+  .fx-spikes svg{display:block;}
+  @keyframes spkY{from{transform:scaleY(0);} to{transform:scaleY(1);}}
+  @keyframes spkX{from{transform:scaleX(0);} to{transform:scaleX(1);}}
+  .fx-boar{position:absolute; width:30px; height:30px; font-size:24px; line-height:30px; text-align:center; transform:translate(-50%,-50%);}
+  .fx-boarline{position:absolute; height:0; border-top:2px dashed rgba(255,91,74,.85); transform-origin:0 0;}
+  .ritual-boss.pop{animation:bossPop .7s ease-out forwards;}
+  @keyframes bossPop{
+    0%{transform:translate(-50%,-50%) scale(1); filter:brightness(1);}
+    45%{transform:translate(-50%,-50%) scale(1.8); filter:brightness(3);}
+    100%{transform:translate(-50%,-50%) scale(2.6); filter:brightness(4); opacity:0;}
+  }
+  .ritual-part{position:absolute; left:50%; top:50%; width:7px; height:7px; border-radius:50%; background:#fff;
+    box-shadow:0 0 8px rgba(255,91,74,.9); z-index:6; pointer-events:none; animation:partFly .95s ease-out forwards;}
+  @keyframes partFly{
+    from{transform:translate(-50%,-50%) scale(1); opacity:1;}
+    to{transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.2); opacity:0;}
+  }
+
+  /* ---------- ending ---------- */
+  .end-overlay{position:fixed; inset:0; z-index:190; background:#000; display:none; flex-direction:column; align-items:center;
+    justify-content:center; opacity:0; transition:opacity 1.5s ease;}
+  .end-overlay.show{display:flex;}
+  .end-overlay.visible{opacity:1;}
+  .end-content{display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; opacity:1; transition:opacity 1.8s ease;}
+  .end-stage{position:relative; width:min(84vw,340px); height:min(84vw,340px); border:2px solid var(--border); background:#020403;
+    opacity:0; transition:opacity 1.4s ease; overflow:hidden;}
+  .end-stage.on{opacity:1;}
+  .end-bowl{position:absolute; left:50%; top:36%; transform:translate(-50%,-50%); font-size:38px; line-height:1; opacity:0; transition:opacity 1.2s ease;}
+  .end-bowl.on{opacity:1;}
+  .end-player{position:absolute; left:50%; top:90%; transform:translate(-50%,-50%); font-size:30px; line-height:1;
+    transition:top 2.6s linear, opacity 1.4s ease-in, transform 1.4s ease-in;}
+  .end-player.walk{animation:walkBob .5s ease-in-out infinite;}
+  @keyframes walkBob{50%{margin-top:-3px;}}
+  .end-player.shake{animation:grabShake .18s linear infinite;}
+  @keyframes grabShake{25%{margin-left:-3px;} 75%{margin-left:3px;}}
+  .end-hand{position:absolute; left:50%; top:36%; transform:translate(-50%,-50%) scale(.4); font-size:44px; line-height:1; opacity:0;
+    filter:brightness(0) drop-shadow(0 0 6px #a06bff) drop-shadow(0 0 2px #fff);
+    transition:opacity 1.2s ease, transform 1.2s ease, top 1.1s ease-in-out;}
+  .end-hand.rise{opacity:1; transform:translate(-50%,-50%) translateY(-26px) scale(1);}
+  .end-line{min-height:44px; margin-top:22px; padding:0 24px; max-width:340px; text-align:center; font-size:13px; line-height:1.6;
+    opacity:0; transition:opacity .6s ease; color:var(--green);}
+  .end-line.on{opacity:1;}
+  .end-line.voice{color:#b9a3ff; font-style:italic; letter-spacing:.1em;}
+  .end-eyes{display:flex; gap:34px; opacity:0; transition:opacity 1.4s ease; margin-bottom:26px;}
+  .end-eyes.on{opacity:1;}
+  .end-eyes .eye{width:15px; height:15px; border-radius:50%; background:#fff; box-shadow:0 0 14px 3px rgba(255,255,255,.7);}
+  .end-eyes.blink .eye{animation:eyeBlink .3s ease 1;}
+  @keyframes eyeBlink{50%{transform:scaleY(.08);}}
+  .end-final{min-height:48px; padding:0 28px; max-width:340px; text-align:center; font-size:13px; line-height:1.7; color:#d8d8d8;
+    letter-spacing:.03em; opacity:0; transition:opacity 1.4s ease;}
+  .end-final.on{opacity:1;}
+  .end-seq{display:none; flex-direction:column; align-items:center;}
+  .ritual-player-icon{font-size:30px; line-height:1;}
+  .ritual-bowl{position:absolute; left:50%; top:48%; transform:translate(-50%,-50%); font-size:38px; z-index:2;
+    transition:transform 1.4s cubic-bezier(.6,0,.85,.35), opacity 1.4s cubic-bezier(.6,0,.85,.35);}
+  .ritual-bowl.sink{transform:translate(-50%,-50%) translateY(70px); opacity:0;}
+  .ritual-pour{position:absolute; left:50%; top:30%; font-size:22px; transform:translate(-50%,-50%); opacity:0; z-index:3;}
+  .ritual-pour.anim{animation:pourDrop .8s ease-in forwards;}
+  @keyframes pourDrop{
+    0%{opacity:0; transform:translate(-50%,-120%) scale(.6);}
+    25%{opacity:1;}
+    100%{opacity:0; transform:translate(-50%,10%) scale(.85);}
+  }
+  .ritual-caption{font-size:12px; color:var(--green-dim); text-align:center; margin-top:18px; line-height:1.6; min-height:34px; max-width:300px;}
+  .ritual-pour-btn{width:auto; padding:10px 22px; margin-top:6px;}
+  .ritual-back-btn{margin-top:20px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="topbar"><div class="logo">Re-sourcing</div></div>
+  <div class="statsbar">
+    <div class="stat-row">
+      <span class="stat-label">HP</span>
+      <div class="stat-track">
+        <div class="stat-fill hp" id="hpFill"><div class="armor-fill" id="armorFill"></div></div>
+      </div>
+      <span class="stat-val" id="hpVal">100%</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">FOOD</span>
+      <div class="stat-track"><div class="stat-fill food" id="foodFill"></div></div>
+      <span class="stat-val" id="foodVal">20/20</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">NRG</span>
+      <div class="stat-track"><div class="stat-fill nrg" id="nrgFill"></div></div>
+      <span class="stat-val" id="nrgVal">100/100</span>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+
+  <div class="screen" id="screen-inventory">
+    <div class="equip-row" id="equipRow"></div>
+    <div class="unequip-panel" id="unequipPanel">
+      <span id="unequipLabel"></span>
+      <button class="btn small" id="unequipBtn">Unequip</button>
+    </div>
+    <div class="stat-row" style="margin-bottom:18px">
+      <span class="stat-label">WGT</span>
+      <div class="stat-track"><div class="stat-fill nrg" id="wgtFill"></div></div>
+      <span class="stat-val" id="wgtVal">0.0 / 40 kg</span>
+    </div>
+    <h2 class="section-title">Inventory <span class="bagcount" id="bagCount"></span></h2>
+    <div class="inv-grid" id="invList"></div>
+    <button class="dev-btn" id="devBtn">DEV: free crafts [OFF]</button>
+  </div>
+
+  <div class="screen" id="screen-crafting">
+    <h2 class="section-title">Crafting</h2>
+    <div id="recipeList"></div>
+  </div>
+
+  <div class="screen" id="screen-expedition">
+    <div id="expeditionSelect">
+      <h2 class="section-title">Choose a location</h2>
+      <div class="loc-grid" id="locGrid"></div>
+    </div>
+
+    <div id="expeditionSearch" style="display:none">
+      <div class="zone-name-line" id="searchZoneName"></div>
+      <div class="zone-blurb-line" id="searchZoneBlurb"></div>
+
+      <div class="search-layout">
+        <div class="search-grids">
+          <div>
+            <div class="grid-label">Found here</div>
+            <div class="chance-grid" id="chanceGrid"></div>
+          </div>
+          <div>
+            <div class="grid-label">Collected this trip</div>
+            <div class="found-grid" id="foundGrid"></div>
+          </div>
+        </div>
+        <div class="search-circle-col">
+          <div class="search-ring" id="searchRing">
+            <svg viewBox="0 0 100 100">
+              <circle class="ring-bg" cx="50" cy="50" r="44"></circle>
+              <circle class="ring-fg" id="ringFg" cx="50" cy="50" r="44" stroke-dasharray="276.5" stroke-dashoffset="276.5"></circle>
+            </svg>
+            <div class="search-btn" id="searchBtn">Hold<br>to search</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="search-caption" id="searchMsg">press and hold — each cycle costs 5 energy and 1 food. Tap a find to collect it — leave without collecting and it's lost.</div>
+
+      <button class="back-btn" id="backBtn">&larr; back to locations</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-alchemy">
+    <div class="alchemy-bg">⚗️</div>
+    <div class="alchemy-fg">
+      <h2 class="section-title">Alchemy Table</h2>
+      <div id="alchemyContent"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="tabbar">
+  <div class="tab-btn active" data-tab="inventory">Inventory</div>
+  <div class="tab-btn" data-tab="crafting">Crafting</div>
+  <div class="tab-btn" data-tab="expedition">Expedition</div>
+  <div class="tab-btn locked" data-tab="alchemy" id="alchemyTabBtn">🔒 Alchemy</div>
+</div>
+
+<div class="death-overlay" id="deathOverlay">
+  <div class="shards" id="shards"></div>
+  <div class="death-content" id="deathContent">
+    <div class="death-title">YOU DIED</div>
+    <div class="death-sub">Starvation caught up with you out there.<br>Your gear stays behind. Try again.</div>
+    <button class="btn death-restart" id="restartBtn">Restart</button>
+  </div>
+</div>
+
+<div class="battle-overlay" id="battleOverlay">
+  <div class="battle-msg" id="battleMsg"></div>
+  <div class="battle-player-hp">
+    <span class="stat-label">HP</span>
+    <div class="stat-track"><div class="stat-fill hp" id="battleHpFill"></div></div>
+    <span class="stat-val" id="battleHpVal">100%</span>
+  </div>
+  <div class="battle-field" id="battleField">
+    <div class="battle-unit player" id="battlePlayer">🧍</div>
+    <div id="battleMonsters"></div>
+    <div class="joystick-base" id="joyBase"><div class="joystick-knob" id="joyKnob"></div></div>
+  </div>
+  <div class="battle-hint">Move with the stick. Get close to attack automatically.<br>Walk off the edge of the field to flee.</div>
+</div>
+
+<div class="ritual-overlay" id="ritualOverlay">
+  <div class="ritual-title" id="ritualTitle">An arena, long buried. A bowl waits at its center.</div>
+  <div class="ritual-hp">
+    <span class="stat-label">HP</span>
+    <div class="stat-track"><div class="stat-fill hp" id="ritualHpFill"></div></div>
+    <span class="stat-val" id="ritualHpVal">100%</span>
+  </div>
+  <div class="ritual-arena" id="ritualArena">
+    <div class="ritual-bowl" id="ritualBowl">🏺</div>
+    <div class="ritual-pour" id="ritualPour">🌌</div>
+    <div class="ritual-boss" id="ritualBoss">👁️</div>
+    <div class="ritual-bosshp" id="ritualBossHp"><div class="ritual-bosshp-lost" id="ritualBossHpLost"></div><div class="ritual-bosshp-fill" id="ritualBossHpFill"></div><div class="ritual-bosshp-val" id="ritualBossHpVal"></div></div>
+    <div class="ritual-speech" id="ritualSpeech"></div>
+    <div class="ritual-strike" id="ritualStrike"><div class="strike-zone"></div><div class="strike-cursor" id="strikeCursor"></div></div>
+    <div class="ritual-fx" id="ritualFx"></div>
+    <div class="ritual-player" id="ritualPlayer">
+      <div class="ritual-player-icon">🧍</div>
+    </div>
+  </div>
+  <div class="ritual-caption" id="ritualCaption">Pour the Void Syrup into the bowl.</div>
+  <button class="btn ritual-pour-btn" id="ritualPourBtn">Pour Void Syrup</button>
+  <button class="btn ritual-pour-btn" id="ritualActionBtn" style="display:none">Continue</button>
+  <div class="ritual-ctrl" id="ritualCtrl">
+    <button class="ritual-heal" id="ritualHealBtn">🩹 Bandage x0</button>
+    <div class="joystick-base ritual-joy" id="ritualJoyBase"><div class="joystick-knob" id="ritualJoyKnob"></div></div>
+  </div>
+  <button class="back-btn ritual-back-btn" id="ritualBackBtn" style="display:none">&larr; step back from the bowl</button>
+</div>
+
+<div class="end-overlay" id="endOverlay">
+  <div class="end-content" id="endContent">
+    <div class="end-seq" id="endSceneWrap" style="display:flex">
+      <div class="end-stage" id="endStage">
+        <div class="end-bowl" id="endBowl">🏺</div>
+        <div class="end-player" id="endPlayer">🧍</div>
+        <div class="end-hand" id="endHand">✋</div>
+      </div>
+      <div class="end-line" id="endLine"></div>
+    </div>
+    <div class="end-seq" id="endEyesWrap">
+      <div class="end-eyes" id="endEyes"><span class="eye"></span><span class="eye"></span></div>
+      <div class="end-final" id="endFinal"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const ZONES = [
+    {id:'forest', name:'Forest', icon:'🌲', blurb:'Timber and herbs beneath a quiet canopy.', food:true},
+    {id:'cave',   name:'Cave',   icon:'🕳️', blurb:'Damp tunnels rich in stone and ore.', food:true},
+    {id:'peaks',  name:'Peaks',  icon:'⛰️', blurb:'High, cold ground heavy with metal.', food:true},
+    {id:'ruins',  name:'Ruins',  icon:'🏚️', blurb:'Old machines buried under rubble. No food here — come stocked up.', food:false}
+  ];
+
+  const RESOURCES = [
+    // forest
+    {id:'wood',        name:'Wood',          icon:'🪵', zone:'forest', rarity:'common',   weight:30, mass:1.2},
+    {id:'stick',       name:'Stick',         icon:'🥢', zone:'forest', rarity:'common',   weight:22, mass:0.3},
+    {id:'herb',        name:'Herb',          icon:'🌿', zone:'forest', rarity:'common',   weight:20, mass:0.1},
+    {id:'leaf',        name:'Leaf',          icon:'🍃', zone:'forest', rarity:'common',   weight:26, mass:0.05},
+    {id:'blueberry',   name:'Blue Berries',  icon:'🫐', zone:'forest', rarity:'common',   weight:20, food:3, mass:0.1},
+    {id:'redberry',    name:'Red Berries',   icon:'🍒', zone:'forest', rarity:'uncommon', weight:12, food:5, mass:0.1},
+    {id:'resin',       name:'Resin',         icon:'🍯', zone:'forest', rarity:'uncommon', weight:10, mass:0.4},
+    {id:'amberseed',   name:'Amberseed',     icon:'✨', zone:'forest', rarity:'rare',     weight:3,  mass:0.05},
+
+    // cave
+    {id:'stone',       name:'Stone',         icon:'🪨', zone:'cave', rarity:'common',   weight:35, mass:2.0},
+    {id:'coal',        name:'Coal',          icon:'⚫', zone:'cave', rarity:'common',   weight:22, mass:1.0},
+    {id:'mushroom',    name:'Mushroom',      icon:'🍄', zone:'cave', rarity:'common',   weight:25, food:6, mass:0.15},
+    {id:'ironore',     name:'Iron Ore',      icon:'🔩', zone:'cave', rarity:'uncommon', weight:13, mass:2.5},
+    {id:'salt',        name:'Salt Crystal',  icon:'🧂', zone:'cave', rarity:'rare',     weight:5,  mass:0.6},
+
+    // peaks
+    {id:'obsidian',    name:'Obsidian',      icon:'⬛', zone:'peaks', rarity:'common',   weight:28, mass:1.8},
+    {id:'frostmoss',   name:'Frostmoss',     icon:'❄️', zone:'peaks', rarity:'common',   weight:20, mass:0.2},
+    {id:'purpleberry', name:'Purple Berries',icon:'🍇', zone:'peaks', rarity:'common',   weight:22, food:3, mass:0.1},
+    {id:'whiteberry',  name:'White Berries', icon:'⚪', zone:'peaks', rarity:'rare',     weight:8,  food:8, mass:0.1},
+    {id:'goldore',     name:'Gold Ore',      icon:'🟡', zone:'peaks', rarity:'uncommon', weight:17, mass:3.0},
+    {id:'crystal',     name:'Crystal',       icon:'💎', zone:'peaks', rarity:'rare',     weight:5,  mass:0.8},
+
+    // ruins — no food
+    {id:'scrap',       name:'Scrap Metal',   icon:'🔧', zone:'ruins', rarity:'common',   weight:45, mass:1.5},
+    {id:'cloth',       name:'Old Cloth',     icon:'🧵', zone:'ruins', rarity:'common',   weight:35, mass:0.3},
+    {id:'gear',        name:'Gear',          icon:'⚙️', zone:'ruins', rarity:'uncommon', weight:15, mass:0.7},
+    {id:'relic',       name:'Relic Shard',   icon:'🔮', zone:'ruins', rarity:'rare',     weight:5,  mass:0.4},
+    {id:'boots',       name:'Boots',         icon:'🥾', zone:'ruins', rarity:'rare',     weight:5,  mass:0.9, slot:'boots', armor:15, speedMult:0.85},
+
+    // combat drops — never appear in normal search pools
+    {id:'hide',        name:'Hide',          icon:'🟤', zone:'forest', rarity:'common', weight:0, mass:0.5, dropOnly:true},
+    {id:'fang',        name:'Spider Fang',   icon:'🦷', zone:'cave',   rarity:'common', weight:0, mass:0.02, dropOnly:true},
+    {id:'icicle',      name:'Icicle',        icon:'🧊', zone:'peaks',  rarity:'common', weight:0, mass:0.2,  dropOnly:true},
+    {id:'vial',        name:'Vial of Darkness', icon:'🧪', zone:'ruins', rarity:'common', weight:0, mass:0.15, dropOnly:true},
+    {id:'blueprint',   name:'Unknown Recipe', icon:'📜', zone:'ruins',  rarity:'rare',   weight:4, mass:0.1, unlocks:'alchemy'}
+  ];
+
+  const RECIPES = [
+    {id:'torch',      name:'Torch',          icon:'🔦', needs:{stick:1, resin:1},               desc:'Lights the way through dark tunnels.', mass:1.0, slots:['lhand','rhand'], luck:0.25},
+    {id:'pickaxe',    name:'Pickaxe',        icon:'⛏️', needs:{scrap:5, stick:3},               desc:'Breaks stone and ore faster.', mass:2.5, slots:['lhand','rhand'], buffDesc:'Speeds up searching while in the Cave. Required to mine anything but mushrooms there.'},
+    {id:'ironingot',  name:'Iron Ingot',     icon:'🧱', needs:{ironore:3, coal:2},              desc:'Smelted iron, ready to shape.', mass:2.0},
+    {id:'salve',      name:'Herbal Salve',   icon:'🩹', needs:{herb:3, resin:1},                desc:'Soothes cuts from careless mining.', mass:0.3, heal:30},
+    {id:'bag',        name:'Bag',            icon:'🎒', needs:{hide:3, stick:2, resin:3},       desc:'Extra straps and pockets for carrying more.', mass:0.5, slots:['back'], capacity:25},
+    {id:'pants',      name:'Pants',          icon:'👖', needs:{hide:5, resin:2},                desc:'Tough hide leggings.', mass:0.8, slot:'legs', armor:25},
+    {id:'amulet',     name:'Relic Amulet',   icon:'📿', needs:{relic:1, cloth:2, ironingot:1},  desc:'A powerful trinket of forgotten make.', mass:0.6, slot:'torso', armor:5, luck:0.25},
+    {id:'wreath',     name:'Wreath',         icon:'🏵️', needs:{stick:2, leaf:5, resin:2},       desc:'A woven headpiece that blunts incoming blows.', mass:0.3, armor:5, slot:'head'},
+    {id:'sharpstick', name:'Sharpened Stick',icon:'🔪', needs:{stick:2},                        desc:'A crude but effective point.', mass:0.4, slots:['lhand','rhand'], damage:25},
+    {id:'alchemytable', name:'Alchemy Table', icon:'⚗️',
+      needs:{stone:4, wood:15, goldore:4, ironingot:6, hide:1, crystal:2, relic:2},
+      desc:'A sturdy bench for the final work. Built on the spot, not carried.', mass:0, isStructure:true, requiresUnlock:'alchemy'},
+
+    // table-only chain — crafted at the Alchemy Table, hidden from the normal Crafting tab
+    {id:'meltedicicle', name:'Melted Icicle', icon:'🥣', needs:{icicle:2},
+      desc:'Icicles thawed down to clear liquid in a bowl.', mass:0.3, table:true},
+    {id:'saltwater',     name:'Salt Water',    icon:'💧', needs:{meltedicicle:1, salt:1},
+      desc:'Melted ice brined with a salt crystal.', mass:0.35, table:true},
+    {id:'poisonberry',   name:'Poisoned Berry',icon:'🟣', needs:{fang:1, frostmoss:2},
+      desc:'A berry steeped in spider venom and frost moss.', mass:0.1, table:true},
+    {id:'blackbowl',     name:'Black Bowl',    icon:'🏺', needs:{obsidian:3},
+      desc:'A bowl carved from obsidian.', mass:0.8, table:true},
+    {id:'voidsyrup',     name:'Void Syrup',    icon:'🌌',
+      needs:{blackbowl:1, saltwater:1, poisonberry:1, vial:1, amberseed:1},
+      desc:'Salt water and venomed berry poured into the bowl, topped with a vial of darkness, finished with an amberseed. Brewed into something that should not exist.',
+      mass:0.4, table:true, isFinal:true}
+  ];
+
+  const RES_BY_ID = Object.fromEntries(RESOURCES.map(r=>[r.id,r]));
+  const RECIPE_BY_ID = Object.fromEntries(RECIPES.map(r=>[r.id,r]));
+  const EQUIP_SLOTS = [
+    {id:'head',  label:'Head',   icon:'🪖'},
+    {id:'torso', label:'Torso',  icon:'🥋'},
+    {id:'legs',  label:'Legs',   icon:'👖'},
+    {id:'boots', label:'Boots',  icon:'🥾'},
+    {id:'lhand', label:'L.Hand', icon:'✋'},
+    {id:'rhand', label:'R.Hand', icon:'✋'},
+    {id:'back',  label:'Back',   icon:'🎒'}
+  ];
+  const HOLD_MS = 1000;
+  const ENERGY_COST = 5;
+  const FOOD_COST = 1;
+  const BASE_MAX_WEIGHT = 40;
+  const OVERLOAD_RATIO = 0.9;       // 90%+ of max carry weight counts as overloaded
+  const BASE_ENERGY_REGEN = 4;      // doubled from 2 — halved again by overload, see regen tick
+  function currentHint(){
+    const c = isOverloaded() ? ENERGY_COST*2 : ENERGY_COST;
+    const t = isOverloaded() ? ' (search is slower while overloaded)' : '';
+    const slow = state.slowSearchesRemaining > 0 ? ` Chilled: ${state.slowSearchesRemaining} more slow search(es).` : '';
+    return `press and hold — each cycle costs ${c} energy and 1 food${t}. Tap a find to collect it — leave without collecting and it's lost.${slow}`;
+  }
+
+  function randomStats(){
+    return {
+      health: Math.floor(Math.random()*100) + 1,   // 1-100, never 0
+      maxHealth: 100,
+      food: Math.floor(Math.random()*20) + 1,      // 1-20, never 0
+      maxFood: 20,
+      energy: Math.floor(Math.random()*101),       // 0-100
+      maxEnergy: 100,
+      armor: 0,                                    // starts at 0 — no gear worn yet
+      maxArmor: 100
+    };
+  }
+
+  const state = {
+    tab:'inventory',
+    zone:null,
+    inventory:{},
+    sessionFinds:{},
+    equipped:{},
+    holding:false,
+    progress:0,
+    lastT:0,
+    dead:false,
+    healTicksRemaining:0,
+    poisonTicksRemaining:0,
+    slowSearchesRemaining:0,
+    alchemyUnlocked:false,
+    alchemyTableBuilt:false,
+    stats: randomStats()
+  };
+
+  const el = id => document.getElementById(id);
+  const invList = el('invList'), recipeList = el('recipeList'), bagCount = el('bagCount');
+  const alchemyTabBtn = el('alchemyTabBtn'), alchemyContent = el('alchemyContent');
+  const expeditionSelect = el('expeditionSelect'), expeditionSearch = el('expeditionSearch');
+  const locGrid = el('locGrid'), chanceGrid = el('chanceGrid'), foundGrid = el('foundGrid');
+  const searchZoneName = el('searchZoneName'), searchZoneBlurb = el('searchZoneBlurb');
+  const ringFg = el('ringFg'), searchBtn = el('searchBtn'), searchMsg = el('searchMsg'), backBtn = el('backBtn');
+  const hpFill = el('hpFill'), hpVal = el('hpVal'), armorFill = el('armorFill'), foodFill = el('foodFill'), foodVal = el('foodVal'),
+        nrgFill = el('nrgFill'), nrgVal = el('nrgVal'), wgtFill = el('wgtFill'), wgtVal = el('wgtVal');
+  const deathOverlay = el('deathOverlay'), shardsEl = el('shards'), deathContent = el('deathContent'), restartBtn = el('restartBtn');
+  const battleOverlay = el('battleOverlay'), battleMsg = el('battleMsg'), battlePlayerEl = el('battlePlayer'),
+        battleMonstersEl = el('battleMonsters'), battleHpFill = el('battleHpFill'), battleHpVal = el('battleHpVal'),
+        joyBase = el('joyBase'), joyKnob = el('joyKnob');
+  const equipRow = el('equipRow'), unequipPanel = el('unequipPanel'), unequipLabel = el('unequipLabel'), unequipBtn = el('unequipBtn');
+  const ritualOverlay = el('ritualOverlay'), ritualArena = el('ritualArena'), ritualBowl = el('ritualBowl'),
+        ritualPour = el('ritualPour'), ritualHpFill = el('ritualHpFill'), ritualHpVal = el('ritualHpVal'), ritualCaption = el('ritualCaption'),
+        ritualPourBtn = el('ritualPourBtn'), ritualBackBtn = el('ritualBackBtn'),
+        ritualTitle = el('ritualTitle'), ritualBoss = el('ritualBoss'), ritualBossHp = el('ritualBossHp'),
+        ritualBossHpFill = el('ritualBossHpFill'), ritualBossHpVal = el('ritualBossHpVal'), ritualBossHpLost = el('ritualBossHpLost'), ritualSpeech = el('ritualSpeech'),
+        ritualStrike = el('ritualStrike'), strikeCursor = el('strikeCursor'), ritualFx = el('ritualFx'), ritualPlayer = el('ritualPlayer'),
+        ritualActionBtn = el('ritualActionBtn'), ritualJoyBase = el('ritualJoyBase'), ritualJoyKnob = el('ritualJoyKnob'),
+        ritualCtrl = el('ritualCtrl'), ritualHealBtn = el('ritualHealBtn'),
+        endOverlay = el('endOverlay'), endContent = el('endContent'), endSceneWrap = el('endSceneWrap'), endStage = el('endStage'),
+        endBowl = el('endBowl'), endPlayer = el('endPlayer'), endHand = el('endHand'), endLine = el('endLine'),
+        endEyesWrap = el('endEyesWrap'), endEyes = el('endEyes'), endFinal = el('endFinal');
+  const CIRC = 2*Math.PI*44;
+
+  function itemName(id){ return (RES_BY_ID[id] || RECIPE_BY_ID[id] || {}).name || id; }
+  function itemIcon(id){ return (RES_BY_ID[id] || RECIPE_BY_ID[id] || {}).icon || '•'; }
+  function itemMass(id){ return (RES_BY_ID[id] || RECIPE_BY_ID[id] || {}).mass || 0; }
+  function itemArmor(id){ return (RES_BY_ID[id] || RECIPE_BY_ID[id] || {}).armor || 0; }
+  function itemLuck(id){ return (RES_BY_ID[id] || RECIPE_BY_ID[id] || {}).luck || 0; }
+  function itemSpeedMult(id){ return (RES_BY_ID[id] || RECIPE_BY_ID[id] || {}).speedMult || 1; }
+  function itemDamage(id){ return (RES_BY_ID[id] || RECIPE_BY_ID[id] || {}).damage || 0; }
+  function itemUnlocks(id){ return (RES_BY_ID[id] || RECIPE_BY_ID[id] || {}).unlocks || null; }
+  function itemSlots(id){
+    const it = RES_BY_ID[id] || RECIPE_BY_ID[id] || {};
+    if(it.slots) return it.slots;
+    if(it.slot) return [it.slot];
+    return [];
+  }
+  function itemCapacity(id){ return (RES_BY_ID[id] || RECIPE_BY_ID[id] || {}).capacity || 0; }
+  function itemHeal(id){ return (RES_BY_ID[id] || RECIPE_BY_ID[id] || {}).heal || 0; }
+  function effectiveMaxWeight(){
+    return BASE_MAX_WEIGHT + (state.equipped.back ? itemCapacity(state.equipped.back) : 0);
+  }
+  function totalCarriedWeight(){
+    return Object.entries(state.inventory).reduce((sum,[id,qty]) => sum + qty*itemMass(id), 0);
+  }
+  function isOverloaded(){
+    return totalCarriedWeight() >= effectiveMaxWeight() * OVERLOAD_RATIO;
+  }
+
+  /* ---------- equipment ---------- */
+  function renderEquipRow(){
+    equipRow.innerHTML = EQUIP_SLOTS.map(slot=>{
+      const eq = state.equipped[slot.id];
+      const icon = eq ? itemIcon(eq) : slot.icon;
+      return `<div class="equip-slot ${eq ? 'filled' : ''}" data-slot="${slot.id}">
+        <div class="slot-icon">${icon}</div><div class="slot-label">${slot.label}</div></div>`;
+    }).join('');
+    equipRow.querySelectorAll('.equip-slot').forEach(cell=>{
+      cell.addEventListener('click', ()=>{
+        const slotId = cell.dataset.slot;
+        const eq = state.equipped[slotId];
+        if(!eq){ unequipPanel.classList.remove('show'); return; }
+        unequipLabel.textContent = `${itemIcon(eq)} ${itemName(eq)} equipped`;
+        unequipBtn.dataset.slot = slotId;
+        unequipPanel.classList.add('show');
+      });
+    });
+  }
+
+  unequipBtn.addEventListener('click', ()=>{
+    const slotId = unequipBtn.dataset.slot;
+    const id = state.equipped[slotId];
+    if(!id) return;
+    state.stats.armor = Math.max(0, state.stats.armor - itemArmor(id));
+    delete state.equipped[slotId];
+    addItem(id, 1);
+    updateStatsUI();
+    renderEquipRow();
+    renderInventory();
+    unequipPanel.classList.remove('show');
+  });
+
+  // Ready for future enemy encounters: reduces incoming damage by the player's armor %.
+  function applyDamage(amount){
+    const s = state.stats;
+    const reduced = amount * (1 - s.armor / 100);
+    s.health = Math.max(0, s.health - reduced);
+    updateStatsUI();
+    if(s.health <= 0) triggerDeath();
+  }
+
+  /* ---------- battle ---------- */
+  let battle = null;
+  let battleRaf = null;
+
+  function maybeSpawnMonster(){
+    for(const key in MONSTERS){
+      const m = MONSTERS[key];
+      if(m.zone === state.zone && Math.random() < m.spawnChance){
+        const min = m.minCount || 1, max = m.maxCount || 1;
+        const count = min + Math.floor(Math.random() * (max - min + 1));
+        return { def: m, count };
+      }
+    }
+    return null;
+  }
+
+  function startBattle(spawn){
+    const { def, count } = spawn;
+    battleMonstersEl.innerHTML = '';
+    const monsters = [];
+    for(let i=0; i<count; i++){
+      const unitEl = document.createElement('div');
+      unitEl.className = 'battle-unit monster' + (def.id === 'darkooze' ? ' ooze' : '');
+      unitEl.innerHTML = `<div class="monster-hp-track"><div class="monster-hp-fill"></div></div><span>${def.icon}</span>`;
+      battleMonstersEl.appendChild(unitEl);
+      monsters.push({
+        name: def.name, attack: def.attack, armor: def.armor, drop: def.drop, poisonChance: def.poisonChance, slowDebuff: def.slowDebuff, split: def.split,
+        hp: def.hp, maxHp: def.hp, alive: true,
+        mx: 15 + Math.random()*70, my: 8 + Math.random()*22,
+        tickAccum: 0, el: unitEl, hpFillEl: unitEl.querySelector('.monster-hp-fill')
+      });
+    }
+    battle = {
+      monsters, loot: {},
+      px:50, py:82, joyX:0, joyY:0, playerTickAccum:0, lastT: performance.now()
+    };
+    battleMsg.textContent = count > 1 ? `${count} wild ${def.name}s attack!` : `A wild ${def.name} attacks!`;
+    renderBattleUnits();
+    battleOverlay.classList.add('show');
+    battleRaf = requestAnimationFrame(battleLoop);
+  }
+
+  function endBattle(result){
+    if(battleRaf) cancelAnimationFrame(battleRaf);
+    battleRaf = null;
+    const loot = battle ? battle.loot : null;
+    battle = null;
+    battleMonstersEl.innerHTML = '';
+    battleOverlay.classList.remove('show');
+    joyKnob.style.transform = 'translate(0,0)';
+    if(result === 'fled') searchMsg.textContent = 'You broke off and fled — no harm done.';
+    if(result === 'won'){
+      const drops = loot ? Object.entries(loot) : [];
+      drops.forEach(([id,qty])=>{ state.sessionFinds[id] = (state.sessionFinds[id]||0) + qty; });
+      renderFoundGrid();
+      const lootTxt = drops.map(([id,qty])=>`${qty} ${itemName(id)}`).join(', ');
+      searchMsg.textContent = lootTxt ? `Enemies defeated — dropped ${lootTxt}. Tap to collect.` : 'Enemies defeated.';
+    }
+  }
+
+  function rollDrop(monster){
+    const d = monster.drop;
+    if(!d || Math.random() > d.chance) return;
+    const min = d.minQty || 1, max = d.maxQty || 1;
+    const qty = min + Math.floor(Math.random() * (max - min + 1));
+    battle.loot[d.id] = (battle.loot[d.id]||0) + qty;
+  }
+
+  function killMonster(m){
+    m.alive = false;
+    m.el.style.opacity = '0';
+    rollDrop(m);
+    if(m.split){
+      for(let i=0; i<m.split.count; i++) spawnChild(m, m.split);
+    }
+  }
+
+  function spawnChild(parent, spec){
+    const unitEl = document.createElement('div');
+    unitEl.className = 'battle-unit monster ooze pop-in';
+    unitEl.innerHTML = `<div class="monster-hp-track"><div class="monster-hp-fill"></div></div><span>🟣</span>`;
+    battleMonstersEl.appendChild(unitEl);
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 8 + Math.random() * 10; // spreads the split offspring apart instead of stacking
+    const mx = Math.min(100, Math.max(0, parent.mx + Math.cos(angle) * dist));
+    const my = Math.min(100, Math.max(0, parent.my + Math.sin(angle) * dist));
+    unitEl.style.left = mx + '%';
+    unitEl.style.top = my + '%';
+    battle.monsters.push({
+      name: parent.name, attack: spec.attack, armor: parent.armor || 0, drop: parent.drop,
+      hp: spec.hp, maxHp: spec.hp, alive: true, split: spec.split || null,
+      mx, my, tickAccum: 0, el: unitEl, hpFillEl: unitEl.querySelector('.monster-hp-fill')
+    });
+  }
+
+  function battleLoop(now){
+    if(!battle) return;
+    const dt = Math.min((now - battle.lastT) / 1000, 0.05);
+    battle.lastT = now;
+
+    battle.px += battle.joyX * PLAYER_SPEED * dt;
+    battle.py += battle.joyY * PLAYER_SPEED * dt;
+
+    if(battle.px < -FLEE_MARGIN || battle.px > 100+FLEE_MARGIN || battle.py < -FLEE_MARGIN || battle.py > 100+FLEE_MARGIN){
+      endBattle('fled');
+      return;
+    }
+
+    battle.playerTickAccum += dt * 1000;
+    const playerSwings = battle.playerTickAccum >= ATTACK_INTERVAL;
+    if(playerSwings) battle.playerTickAccum -= ATTACK_INTERVAL;
+
+    for(const m of battle.monsters){
+      if(!m.alive) continue;
+      const dx = battle.px - m.mx, dy = battle.py - m.my;
+      const dist = Math.hypot(dx, dy);
+      if(dist > 1){
+        m.mx += (dx/dist) * MONSTER_SPEED * dt;
+        m.my += (dy/dist) * MONSTER_SPEED * dt;
+      }
+      m.mx = Math.min(100, Math.max(0, m.mx));
+      m.my = Math.min(100, Math.max(0, m.my));
+
+      if(dist <= ATTACK_RANGE){
+        if(playerSwings){
+          m.hp = Math.max(0, m.hp - currentPlayerDamage() * (1 - m.armor/100));
+          if(m.hp <= 0) killMonster(m);
+        }
+        m.tickAccum += dt * 1000;
+        if(m.tickAccum >= ATTACK_INTERVAL){
+          m.tickAccum -= ATTACK_INTERVAL;
+          applyDamage(m.attack);
+          if(m.poisonChance && Math.random() < m.poisonChance){
+            state.poisonTicksRemaining = Math.max(state.poisonTicksRemaining, POISON_DURATION);
+          }
+          if(m.slowDebuff){
+            const n = SLOW_MIN + Math.floor(Math.random() * (SLOW_MAX - SLOW_MIN + 1));
+            state.slowSearchesRemaining = Math.max(state.slowSearchesRemaining, n);
+          }
+          if(state.dead){
+            if(battleRaf) cancelAnimationFrame(battleRaf);
+            battleRaf = null;
+            battle = null;
+            battleMonstersEl.innerHTML = '';
+            battleOverlay.classList.remove('show');
+            return;
+          }
+        }
+      } else {
+        m.tickAccum = 0;
+      }
+    }
+
+    if(battle.monsters.every(m => !m.alive)){ endBattle('won'); return; }
+
+    renderBattleUnits();
+    battleRaf = requestAnimationFrame(battleLoop);
+  }
+
+  function renderBattleUnits(){
+    if(!battle) return;
+    battlePlayerEl.style.left = battle.px + '%';
+    battlePlayerEl.style.top = battle.py + '%';
+    battle.monsters.forEach(m=>{
+      if(!m.alive) return;
+      m.el.style.left = m.mx + '%';
+      m.el.style.top = m.my + '%';
+      m.hpFillEl.style.width = Math.max(0, m.hp/m.maxHp*100) + '%';
+    });
+    const s = state.stats;
+    battleHpFill.style.width = Math.round(s.health) + '%';
+    battleHpVal.textContent = Math.round(s.health) + '%';
+  }
+
+  let joyActive = false, joyCenterX = 0, joyCenterY = 0;
+  function joyMove(clientX, clientY){
+    const dx = clientX - joyCenterX, dy = clientY - joyCenterY;
+    const maxR = 36;
+    const d = Math.min(maxR, Math.hypot(dx, dy));
+    const angle = Math.atan2(dy, dx);
+    const kx = Math.cos(angle) * d, ky = Math.sin(angle) * d;
+    joyKnob.style.transform = `translate(${kx}px, ${ky}px)`;
+    if(battle){ battle.joyX = kx / maxR; battle.joyY = ky / maxR; }
+  }
+  joyBase.addEventListener('pointerdown', e=>{
+    e.preventDefault();
+    joyActive = true;
+    const rect = joyBase.getBoundingClientRect();
+    joyCenterX = rect.left + rect.width/2;
+    joyCenterY = rect.top + rect.height/2;
+    joyMove(e.clientX, e.clientY);
+  });
+  window.addEventListener('pointermove', e=>{ if(joyActive) joyMove(e.clientX, e.clientY); });
+  window.addEventListener('pointerup', ()=>{
+    joyActive = false;
+    joyKnob.style.transform = 'translate(0,0)';
+    if(battle){ battle.joyX = 0; battle.joyY = 0; }
+  });
+
+  /* ---------- tabs ---------- */
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(btn.classList.contains('locked')) return;
+      setTab(btn.dataset.tab);
+    });
+  });
+
+  function setTab(tab){
+    state.tab = tab;
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    el('screen-'+tab).classList.add('active');
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+    if(tab === 'expedition') showLocationSelect(); else cancelHold();
+    if(tab === 'inventory') renderInventory();
+    if(tab === 'crafting') renderCrafting();
+    if(tab === 'alchemy') renderAlchemy();
+  }
+
+  /* ---------- stats ---------- */
+  function updateStatsUI(){
+    const s = state.stats;
+    hpFill.style.width = Math.round(s.health) + '%';
+    hpFill.classList.toggle('low', s.health <= 25);
+    armorFill.style.width = (s.health > 0 ? Math.min(100, (s.armor / s.health) * 100) : 0) + '%';
+    ritualHpFill.style.width = Math.round(s.health) + '%';
+    ritualHpFill.classList.toggle('low', s.health <= 25);
+    ritualHpVal.textContent = Math.round(s.health) + '%' + (s.armor > 0 ? ' 🛡' + s.armor : '');
+    hpVal.textContent = Math.round(s.health) + '%' + (s.armor > 0 ? ' 🛡' + s.armor : '') + (state.poisonTicksRemaining > 0 ? ' ☠' : '');
+    foodFill.style.width = (s.food / s.maxFood * 100) + '%';
+    foodFill.classList.toggle('low', s.food <= 4);
+    foodVal.textContent = s.food + '/' + s.maxFood;
+    nrgFill.style.width = (s.energy / s.maxEnergy * 100) + '%';
+    nrgFill.classList.toggle('low', s.energy < currentEnergyCost());
+    nrgVal.textContent = s.energy + '/' + s.maxEnergy;
+  }
+
+  setInterval(()=>{
+    if(state.dead || state.ending) return;
+    const s = state.stats;
+    if(s.food > 0){
+      const energyRegen = ((s.food / s.maxFood) * BASE_ENERGY_REGEN) / (isOverloaded() ? 2 : 1);
+      const healthRegen = energyRegen / 4;           // same taper, 4x slower
+      s.energy = Math.min(s.maxEnergy, s.energy + Math.round(energyRegen));
+      s.health = Math.min(s.maxHealth, s.health + healthRegen);
+    } else if(s.health > 0){
+      s.health = Math.max(0, s.health - 2);
+      if(s.health <= 0) triggerDeath();
+    }
+    if(state.healTicksRemaining > 0 && s.health > 0){
+      s.health = Math.min(s.maxHealth, s.health + s.maxHealth * HEAL_RATE_PER_SEC / 100);
+      state.healTicksRemaining -= 1;
+    }
+    if(state.poisonTicksRemaining > 0 && s.health > 0){
+      s.health = Math.max(0, s.health - s.maxHealth * POISON_RATE_PER_SEC / 100);
+      state.poisonTicksRemaining -= 1;
+      if(s.health <= 0) triggerDeath();
+    }
+    updateStatsUI();
+  }, 1000);
+
+  /* ---------- death / restart ---------- */
+  function createShards(){
+    shardsEl.innerHTML = '';
+    const cols = 3, rows = 5;
+    const w = 100/cols, h = 100/rows;
+    for(let r=0; r<rows; r++){
+      for(let c=0; c<cols; c++){
+        const shard = document.createElement('div');
+        shard.className = 'shard';
+        shard.style.left = (c*w) + '%';
+        shard.style.top = (r*h) + '%';
+        shard.style.width = w + '%';
+        shard.style.height = h + '%';
+        shard.style.setProperty('--rot', (Math.random()*70-35).toFixed(1)+'deg');
+        shard.style.animationDelay = Math.round(Math.random()*260) + 'ms';
+        shardsEl.appendChild(shard);
+      }
+    }
+  }
+
+  function triggerDeath(){
+    if(state.dead) return;
+    state.dead = true;
+    cancelHold();
+    createShards();
+    deathOverlay.classList.add('show');
+    requestAnimationFrame(()=>{
+      shardsEl.querySelectorAll('.shard').forEach(s => s.classList.add('fall'));
+    });
+    setTimeout(()=> deathContent.classList.add('show'), 950);
+  }
+
+  function resetGame(){
+    state.dead = false;
+    state.zone = null;
+    state.inventory = {};
+    state.sessionFinds = {};
+    state.equipped = {};
+    state.healTicksRemaining = 0;
+    state.poisonTicksRemaining = 0;
+    state.slowSearchesRemaining = 0;
+    state.alchemyUnlocked = false;
+    state.alchemyTableBuilt = false;
+    state.stats = randomStats();
+    if(battleRaf) cancelAnimationFrame(battleRaf);
+    battleRaf = null;
+    battle = null;
+    battleOverlay.classList.remove('show');
+    deathContent.classList.remove('show');
+    deathOverlay.classList.remove('show');
+    shardsEl.innerHTML = '';
+    unequipPanel.classList.remove('show');
+    alchemyTabBtn.classList.add('locked');
+    alchemyTabBtn.textContent = '🔒 Alchemy';
+    alchemyCancel();
+    updateStatsUI();
+    updateBagCount();
+    updateWeightUI();
+    renderEquipRow();
+    renderInventory();
+    renderCrafting();
+    renderAlchemy();
+    showLocationSelect();
+    setTab('inventory');
+    ritualOverlay.classList.remove('show','visible');
+    document.body.classList.remove('ui-hidden');
+    ritualResetScene();
+    state.ending = false;
+  }
+  restartBtn.addEventListener('click', resetGame);
+
+  /* ---------- void syrup ritual ---------- */
+
+  function startRitual(){
+    document.body.classList.add('ui-hidden');
+    setTimeout(()=>{
+      ritualResetScene();
+      updateStatsUI();
+      ritualBowl.classList.remove('sink');
+      ritualPour.classList.remove('anim');
+      ritualCaption.textContent = 'Pour the Void Syrup into the bowl.';
+      ritualPourBtn.style.display = '';
+      ritualPourBtn.disabled = false;
+      ritualBackBtn.style.display = '';
+      ritualOverlay.classList.add('show');
+      requestAnimationFrame(()=> ritualOverlay.classList.add('visible'));
+    }, 1900);
+  }
+
+  function endRitual(){
+    ritualOverlay.classList.remove('visible');
+    setTimeout(()=>{
+      ritualOverlay.classList.remove('show');
+      document.body.classList.remove('ui-hidden');
+    }, 1200);
+  }
+
+  ritualPourBtn.addEventListener('click', ()=>{
+    ritualPourBtn.disabled = true;
+    ritualBackBtn.style.display = 'none';
+    if(state.inventory.voidsyrup > 0){
+      state.inventory.voidsyrup -= 1;
+      if(state.inventory.voidsyrup <= 0) delete state.inventory.voidsyrup;
+      updateBagCount(); updateWeightUI(); renderInventory(); renderAlchemy();
+    }
+    ritualPour.classList.add('anim');
+    ritualCaption.textContent = 'The syrup spills into the bowl...';
+    setTimeout(()=>{
+      ritualBowl.classList.add('sink');
+      ritualCaption.textContent = 'The bowl sinks slowly into the ground...';
+    }, 700);
+    setTimeout(()=>{
+      ritualPourBtn.style.display = 'none';
+      ritualCaption.textContent = '';
+      bossIntro();
+    }, 2300);
+  });
+
+  ritualBackBtn.addEventListener('click', endRitual);
+
+  /* ---------- boss fight (phase 1) ---------- */
+  const BOSS_DMG_ICE = 10, BOSS_DMG_POISON = 35, BOSS_DMG_SALT = 50;
+  const PLAYER_HIT_DAMAGE = 30;           // % of boss health per successful strike
+  const BOSS_PHASE2_HP = 10;
+  const BOSS_LINES = [
+    'So. You carried it all the way down here.',
+    'Salt. Venom. Frost. Everything I was missing.',
+    'Come, then. Let me taste what you are.'
+  ];
+  let boss = null, bossRaf = null;
+  const rJoy = {x:0, y:0};
+  const rnd = (a,b)=> a + Math.random()*(b-a);
+
+  function ritualResetScene(){
+    if(bossRaf) cancelAnimationFrame(bossRaf);
+    bossRaf = null;
+    boss = null;
+    rJoy.x = 0; rJoy.y = 0;
+    ritualBoss.classList.remove('show','shake','center');
+    ritualCtrl.style.display = 'none';
+    ritualBossHpVal.textContent = '';
+    ritualSpeech.style.top = '';
+    ritualBossHp.style.opacity = 0;
+    ritualSpeech.style.display = 'none';
+    ritualStrike.style.display = 'none';
+    ritualFx.innerHTML = '';
+    ritualActionBtn.style.display = 'none';
+    ritualJoyBase.style.display = 'none';
+    ritualJoyKnob.style.transform = 'translate(0,0)';
+    ritualTitle.style.display = '';
+    ritualPlayer.style.left = '50%';
+    ritualPlayer.style.top = '80%';
+  }
+
+  function ritualFlash(text){
+    const f = document.createElement('div');
+    f.className = 'ritual-flash';
+    f.textContent = text;
+    ritualArena.appendChild(f);
+    setTimeout(()=> f.remove(), 1250);
+  }
+
+  function bossLoopStart(){
+    if(bossRaf || !boss) return;
+    boss.lastT = performance.now();
+    bossRaf = requestAnimationFrame(bossLoop);
+  }
+
+  function bossLoop(now){
+    bossRaf = null;
+    if(state.dead || !boss) return;
+    const dt = Math.min(0.05, (now - boss.lastT) / 1000);
+    boss.lastT = now;
+    if(boss.phase === 'strike'){
+      boss.cur += boss.dir * 1.15 * dt;
+      if(boss.cur >= 1){ boss.cur = 1; boss.dir = -1; }
+      else if(boss.cur <= 0){ boss.cur = 0; boss.dir = 1; }
+      strikeCursor.style.left = (boss.cur * 100) + '%';
+    } else if(boss.phase === 'dodge'){
+      dodgeStep(dt);
+    }
+    if(boss && boss.phase !== 'done') bossRaf = requestAnimationFrame(bossLoop);
+  }
+
+  function bossIntro(){
+    boss = {hp:100, strikes:0, attacks:0, phase:'rise', line:0, cur:0, dir:1, lastT:performance.now(), fight:null};
+    ritualTitle.style.display = 'none';
+    ritualBoss.classList.add('show');
+    bossLoopStart();
+    setTimeout(()=>{
+      if(!boss || state.dead) return;
+      boss.phase = 'dialogue';
+      showBossLine();
+    }, 1500);
+  }
+
+  function showBossLine(){
+    ritualSpeech.textContent = BOSS_LINES[boss.line];
+    ritualSpeech.style.display = 'block';
+    ritualActionBtn.textContent = 'Continue';
+    ritualActionBtn.style.display = '';
+  }
+
+  function beginStrike(){
+    if(!boss || state.dead) return;
+    const W = ritualArena.clientWidth;
+    ritualSpeech.style.display = 'none';
+    ritualFx.innerHTML = '';
+    ritualBoss.classList.add('show');
+    ritualPlayer.style.left = '50%';
+    ritualPlayer.style.top = '80%';
+    ritualJoyBase.style.display = 'none';
+    rJoy.x = 0; rJoy.y = 0;
+    ritualCtrl.style.display = 'flex';
+    updateHealBtn();
+    boss.cur = 0; boss.dir = 1;
+    boss.phase = 'strike';
+    strikeCursor.style.left = '0%';
+    ritualStrike.style.display = 'block';
+    ritualCaption.textContent = 'Press Strike when the marker crosses the green zone.';
+    ritualActionBtn.textContent = 'Strike';
+    ritualActionBtn.style.display = '';
+    bossLoopStart();
+  }
+
+  function showBossHpDrop(oldHp, newHp){
+    ritualBossHp.style.opacity = 1;
+    ritualBossHpLost.style.width = oldHp + '%';
+    ritualBossHpFill.style.transition = 'none';
+    ritualBossHpFill.style.width = oldHp + '%';
+    void ritualBossHpFill.offsetWidth;
+    ritualBossHpFill.style.transition = 'width .5s ease';
+    setTimeout(()=>{ ritualBossHpFill.style.width = newHp + '%'; }, 300);
+    setTimeout(()=>{ ritualBossHpLost.style.width = newHp + '%'; }, 900);
+    setTimeout(()=>{ ritualBossHp.style.opacity = 0; }, 1600);
+  }
+
+  function doStrike(){
+    if(!boss || boss.phase !== 'strike') return;
+    boss.phase = 'resolving';
+    ritualActionBtn.style.display = 'none';
+    const hit = boss.strikes > 0 && Math.abs(boss.cur - 0.5) <= 0.1;   // first strike always misses
+    const first = boss.strikes === 0;
+    boss.strikes++;
+    if(hit){
+      const oldHp = boss.hp;
+      boss.hp = Math.max(0, boss.hp - PLAYER_HIT_DAMAGE);
+      showBossHpDrop(oldHp, boss.hp);
+      ritualBoss.classList.remove('shake'); void ritualBoss.offsetWidth; ritualBoss.classList.add('shake');
+      ritualCaption.textContent = 'Direct hit!';
+    } else {
+      ritualFlash('MISS');
+      ritualCaption.textContent = first ? 'The darkness slips away from your strike.' : 'You missed.';
+    }
+    setTimeout(()=>{
+      if(!boss || state.dead) return;
+      ritualStrike.style.display = 'none';
+      if(boss.hp <= BOSS_PHASE2_HP) bossPhaseTwo();
+      else beginDodge();
+    }, 1900);
+  }
+
+  /* ---------- phase 2 ---------- */
+  const BOSS_R = 30;                 // collision radius of the eye (px)
+  const BOSS_MAX_HP = 1000;          // phase 2 health pool
+  const SERVANT_HP = 80, SERVANT_HEAL = 0.2;
+  const BOAR_CHARGE_DMG = 25, SPIKE_DMG = 25, SPIKE_DEPTH = 18;
+
+  function randInt(a, b){ return a + Math.floor(Math.random() * (b - a + 1)); }
+  function distToSeg(px, py, x0, y0, x1, y1){
+    const dx = x1 - x0, dy = y1 - y0;
+    const l2 = dx*dx + dy*dy || 1;
+    let t = ((px - x0)*dx + (py - y0)*dy) / l2;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (x0 + t*dx), py - (y0 + t*dy));
+  }
+  function wallRect(wall, W, D){
+    if(wall === 0) return {l:0, t:0, w:W, h:D};
+    if(wall === 1) return {l:0, t:W-D, w:W, h:D};
+    if(wall === 2) return {l:0, t:0, w:D, h:W};
+    return {l:W-D, t:0, w:D, h:W};
+  }
+  function spikeSvg(wall, W, D){
+    const n = 14, s = W / n;
+    let pts = '';
+    for(let i=0; i<n; i++){
+      const a = i*s, b = (i+0.5)*s, c = (i+1)*s;
+      if(wall === 0) pts += `<polygon points="${a},0 ${b},${D} ${c},0"/>`;
+      else if(wall === 1) pts += `<polygon points="${a},${W} ${b},${W-D} ${c},${W}"/>`;
+      else if(wall === 2) pts += `<polygon points="0,${a} ${D},${b} 0,${c}"/>`;
+      else pts += `<polygon points="${W},${a} ${W-D},${b} ${W},${c}"/>`;
+    }
+    return `<svg width="${W}" height="${W}" viewBox="0 0 ${W} ${W}" fill="#ff5b4a" stroke="#fff" stroke-width="1">${pts}</svg>`;
+  }
+
+  function updateBossHp2(){
+    const pct = (boss.hp2 / BOSS_MAX_HP * 100) + '%';
+    ritualBossHpFill.style.width = pct;
+    ritualBossHpLost.style.width = pct;
+    ritualBossHpVal.textContent = Math.ceil(boss.hp2) + ' / ' + BOSS_MAX_HP + ' HP';
+  }
+
+  function bossDeath(){
+    boss.phase = 'done';
+    state.ending = true;                        // freezes hunger/regen: nothing can interrupt the finale
+    rJoy.x = 0; rJoy.y = 0;
+    ritualFx.innerHTML = '';
+    ritualJoyBase.style.display = 'none';
+    ritualCtrl.style.display = 'none';
+    ritualBossHp.style.opacity = 0;
+    ritualCaption.textContent = '';
+    ritualBoss.classList.remove('shake');
+    ritualBoss.classList.add('pop');           // the eye bursts
+    for(let i=0; i<18; i++){
+      const part = document.createElement('div');
+      part.className = 'ritual-part';
+      const a = (i / 18) * Math.PI * 2 + rnd(-0.2, 0.2), d = rnd(60, 150);
+      part.style.setProperty('--dx', (Math.cos(a) * d) + 'px');
+      part.style.setProperty('--dy', (Math.sin(a) * d) + 'px');
+      ritualArena.appendChild(part);
+    }
+    setTimeout(runEnding, 1300);
+  }
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function endSay(text, cls, hold){
+    endLine.className = 'end-line ' + cls;
+    endLine.textContent = text;
+    await sleep(30);
+    endLine.classList.add('on');
+    await sleep(hold);
+    endLine.classList.remove('on');
+    await sleep(700);
+  }
+
+  async function runEnding(){
+    // 1. everything fades to black
+    endOverlay.classList.add('show');
+    await sleep(50);
+    endOverlay.classList.add('visible');
+    await sleep(1800);
+    ritualOverlay.classList.remove('show','visible');
+    // 2. the player walks up to the vessel
+    endStage.classList.add('on');
+    endBowl.classList.add('on');
+    await sleep(1800);
+    endPlayer.classList.add('walk');
+    endPlayer.style.top = '66%';
+    await sleep(2700);
+    endPlayer.classList.remove('walk');
+    await sleep(500);
+    await endSay('I found you.', '', 2200);
+    await endSay('…', 'voice', 2600);
+    await endSay("Don't be afraid. No one will hurt you anymore.", '', 3400);
+    // 3. a dark hand rises out of the vessel and takes the player
+    endHand.classList.add('rise');
+    await sleep(1500);
+    endHand.style.top = '60%';
+    await sleep(1200);
+    endPlayer.classList.add('shake');
+    await sleep(900);
+    endPlayer.classList.remove('shake');
+    endHand.style.transition = 'opacity 1.4s ease-in, transform 1.4s ease-in, top 1.4s ease-in';
+    endHand.style.top = '36%';
+    endHand.style.transform = 'translate(-50%,-50%) scale(.15)';
+    endHand.style.opacity = '0';
+    endPlayer.style.top = '36%';
+    endPlayer.style.transform = 'translate(-50%,-50%) scale(.1)';
+    endPlayer.style.opacity = '0';
+    await sleep(2000);
+    // 4. the scene goes dark, two white eyes appear
+    endStage.classList.remove('on');
+    await sleep(1800);
+    endSceneWrap.style.display = 'none';
+    endEyesWrap.style.display = 'flex';
+    await sleep(100);
+    endEyes.classList.add('on');
+    await sleep(2200);
+    endEyes.classList.add('blink');
+    await sleep(900);
+    endFinal.textContent = 'Okay. I believe you. But now you will stay with me.';
+    endFinal.classList.add('on');
+    await sleep(5500);
+    // 5. dark again. That's the end.
+    endContent.style.opacity = '0';
+    await sleep(2000);
+  }
+
+  function updateHealBtn(){
+    const n = state.inventory.salve || 0;
+    ritualHealBtn.textContent = `🩹 Bandage x${n}`;
+    ritualHealBtn.disabled = n <= 0;
+  }
+  ritualHealBtn.addEventListener('click', ()=>{
+    if(!boss || state.dead) return;
+    if((state.inventory.salve || 0) <= 0) return;
+    state.inventory.salve -= 1;
+    if(state.inventory.salve <= 0) delete state.inventory.salve;
+    state.healTicksRemaining = (state.healTicksRemaining || 0) + (itemHeal('salve') / HEAL_RATE_PER_SEC);
+    updateBagCount(); updateWeightUI(); renderInventory(); updateHealBtn();
+  });
+
+  function bossPhaseTwo(){
+    boss.phase = 'p2intro';
+    ritualActionBtn.style.display = 'none';
+    ritualCaption.textContent = '';
+    ritualSpeech.style.top = '6%';
+    ritualSpeech.textContent = 'Enough games.';
+    ritualSpeech.style.display = 'block';
+    ritualBoss.classList.add('show', 'center');      // the eye drifts to the middle of the arena
+    ritualJoyBase.style.display = 'block';
+    setTimeout(()=>{
+      if(!boss || state.dead) return;
+      ritualSpeech.style.display = 'none';
+      ritualSpeech.style.top = '';
+      const W = ritualArena.clientWidth;
+      ritualCaption.textContent = 'Survive.';
+      boss.p2 = {ice:0.5, poison:2.0, salt:3.5, spike:7, boar:5, boarAlive:false,
+                 sv50:false, sv20:false, svPending:0, servantAlive:false, atkCd:0};
+      boss.hp2 = BOSS_MAX_HP;
+      ritualBossHpLost.style.width = '100%';
+      ritualBossHpFill.style.transition = 'width .3s ease';
+      ritualBossHpFill.style.width = '100%';
+      ritualBossHpVal.textContent = BOSS_MAX_HP + ' / ' + BOSS_MAX_HP + ' HP';
+      ritualBossHp.style.opacity = 1;
+      boss.fight = {W, t:-1.0, px:W/2, py:0.8*W, iframes:0, events:[], doneT:0};
+      boss.phase = 'dodge';
+      bossLoopStart();
+    }, 2200);
+  }
+
+  function scheduleP2(f, dt){
+    const p = boss.p2, W = f.W;
+    if(f.t < 0) return;
+    p.ice -= dt;
+    if(p.ice <= 0){
+      p.ice = rnd(0.7, 1.1);
+      f.events.push({type:'ice', t:f.t, x:rnd(0.06*W, 0.94*W), dur:rnd(0.9, 1.2), state:0});
+    }
+    p.poison -= dt;
+    if(p.poison <= 0){
+      p.poison = rnd(2.4, 3.4);
+      f.events.push({type:'poison', t:f.t, x:rnd(0.14*W, 0.86*W), y:rnd(0.14*W, 0.86*W), r:0.1*W, warn:1.0, state:0});
+    }
+    p.salt -= dt;
+    if(p.salt <= 0){
+      p.salt = rnd(4, 6);
+      f.events.push({type:'saltAim', t:f.t, warn:1.1, travel:0.6, state:0});
+    }
+    p.spike -= dt;
+    if(p.spike <= 0 && !f.events.some(e => e.type === 'spike')){
+      p.spike = rnd(9, 13);
+      f.events.push({type:'spike', t:f.t, wall:randInt(0,3), warn:1.2, dur:3.2, state:0});
+    }
+    if(!p.sv50 && boss.hp2 <= BOSS_MAX_HP * 0.5){ p.sv50 = true; p.svPending++; }
+    if(!p.sv20 && boss.hp2 <= BOSS_MAX_HP * 0.2){ p.sv20 = true; p.svPending++; }
+    if(p.svPending > 0 && !p.servantAlive){
+      p.svPending--;
+      p.servantAlive = true;
+      f.events.push({type:'servant', t:f.t, state:0, hp:SERVANT_HP, maxHp:SERVANT_HP, mode:'enter', modeT:0, atkCd:0});
+    }
+    if(!p.boarAlive){
+      p.boar -= dt;
+      if(p.boar <= 0){
+        p.boarAlive = true;
+        f.events.push({type:'boar', t:f.t, state:0, hp:100, maxHp:100, mode:'enter', modeT:0, atkCd:0, hit:false, ang:0});
+      }
+    }
+  }
+
+  function beginDodge(){
+    if(!boss || state.dead) return;
+    boss.attacks++;
+    const stage = Math.min(boss.attacks, 3);
+    const W = ritualArena.clientWidth;
+    ritualBoss.classList.remove('show');            // the boss vanishes while it attacks
+    ritualStrike.style.display = 'none';
+    ritualActionBtn.style.display = 'none';
+    ritualJoyBase.style.display = 'block';
+    ritualCaption.textContent = 'Dodge!';
+    const events = [];
+    // icicles: ~5s of falling shards
+    for(let i=0; i<14; i++) events.push({type:'ice', t:rnd(0,5), x:rnd(0.06*W,0.94*W), dur:rnd(0.9,1.2), state:0});
+    // poison pools: 5 random pools
+    if(stage >= 2) for(let i=0; i<5; i++) events.push({type:'poison', t:rnd(0.3,5.5), x:rnd(0.14*W,0.86*W), y:rnd(0.14*W,0.86*W), r:0.1*W, warn:1.0, state:0});
+    // salt beams: 3 horizontal beams, spread out in time
+    if(stage >= 3) for(let i=0; i<3; i++) events.push({type:'salt', t:1.0 + i*1.7 + rnd(0,0.6), y:rnd(0.1*W,0.9*W), dir:Math.random()<0.5?1:-1, warn:1.0, travel:0.75, state:0});
+    boss.fight = {W, t:-0.8, px:W/2, py:0.8*W, iframes:0, events, doneT:0};
+    boss.phase = 'dodge';
+    ritualPlayer.style.left = boss.fight.px + 'px';
+    ritualPlayer.style.top = boss.fight.py + 'px';
+    bossLoopStart();
+  }
+
+  function hurtPlayer(amount){
+    const f = boss && boss.fight;
+    if(!f || f.iframes > 0) return;
+    f.iframes = 0.5;
+    ritualPlayer.classList.remove('hurt'); void ritualPlayer.offsetWidth; ritualPlayer.classList.add('hurt');
+    applyDamage(amount);
+  }
+
+  function mkFx(cls, html){
+    const d = document.createElement('div');
+    d.className = cls;
+    if(html) d.innerHTML = html;
+    ritualFx.appendChild(d);
+    return d;
+  }
+
+  function dodgeStep(dt){
+    const f = boss.fight, W = f.W;
+    f.t += dt;
+    f.iframes = Math.max(0, f.iframes - dt);
+    f.px = Math.min(W-12, Math.max(12, f.px + rJoy.x * 0.6 * W * dt));
+    f.py = Math.min(W-12, Math.max(12, f.py + rJoy.y * 0.6 * W * dt));
+    if(boss.p2){
+      // the eye is solid: push the player out of it
+      const bx = W/2, by = W/2, ddx = f.px - bx, ddy = f.py - by, dd = Math.hypot(ddx, ddy), minD = BOSS_R + 10;
+      if(dd < minD){
+        if(dd === 0){ f.py = by + minD; }
+        else { f.px = bx + ddx / dd * minD; f.py = by + ddy / dd * minD; }
+      }
+      scheduleP2(f, dt);
+      // the player punches the eye when standing next to it
+      boss.p2.atkCd = Math.max(0, boss.p2.atkCd - dt);
+      if(f.t >= 0 && boss.p2.atkCd === 0 && dd <= Math.max(ATTACK_RANGE/100 * W, minD + 6)){
+        boss.p2.atkCd = ATTACK_INTERVAL / 1000;
+        boss.hp2 = Math.max(0, boss.hp2 - currentPlayerDamage());
+        updateBossHp2();
+        ritualBoss.classList.remove('shake'); void ritualBoss.offsetWidth; ritualBoss.classList.add('shake');
+        if(boss.hp2 <= 0){ bossDeath(); return; }
+      }
+    }
+    ritualPlayer.style.left = f.px + 'px';
+    ritualPlayer.style.top = f.py + 'px';
+    let active = 0;
+    for(const e of f.events){
+      if(e.state === 3) continue;
+      active++;
+      const te = f.t - e.t;
+      if(te < 0) continue;
+      if(e.type === 'ice'){
+        if(e.state === 0){ e.el = mkFx('fx-ice', '🧊'); e.state = 1; }
+        const y = -20 + (te / e.dur) * (W + 40);
+        e.el.style.left = e.x + 'px';
+        e.el.style.top = y + 'px';
+        if(!e.hit && Math.hypot(f.px - e.x, f.py - y) < 18){ e.hit = true; hurtPlayer(BOSS_DMG_ICE); }
+        if(te >= e.dur){ e.el.remove(); e.state = 3; }
+      } else if(e.type === 'poison'){
+        if(e.state === 0){
+          e.el = mkFx('fx-warn');
+          e.el.style.width = e.el.style.height = (e.r*2) + 'px';
+          e.el.style.left = e.x + 'px';
+          e.el.style.top = e.y + 'px';
+          e.state = 1;
+        }
+        if(e.state === 1 && te >= e.warn){
+          e.el.className = 'fx-pool';
+          e.state = 2;
+          if(Math.hypot(f.px - e.x, f.py - e.y) < e.r + 6) hurtPlayer(BOSS_DMG_POISON);
+        }
+        if(e.state === 2 && te >= e.warn + 0.5){ e.el.remove(); e.state = 3; }
+      } else if(e.type === 'salt'){
+        const len = 0.4 * W;
+        if(e.state === 0){
+          e.el = mkFx('fx-beamwarn', e.dir > 0 ? '▶▶▶' : '◀◀◀');
+          e.el.style.top = e.y + 'px';
+          e.el.style.justifyContent = e.dir > 0 ? 'flex-start' : 'flex-end';
+          e.state = 1;
+        }
+        if(e.state === 1 && te >= e.warn){
+          e.el.remove();
+          e.el = mkFx('fx-beam');
+          e.el.style.width = len + 'px';
+          e.el.style.top = e.y + 'px';
+          e.state = 2;
+        }
+        if(e.state === 2){
+          const p = (te - e.warn) / e.travel;
+          const bx = e.dir > 0 ? -len + p * (W + len) : W - p * (W + len);
+          e.el.style.left = bx + 'px';
+          if(!e.hit && f.px + 8 > bx && f.px - 8 < bx + len && Math.abs(f.py - e.y) < 15){ e.hit = true; hurtPlayer(BOSS_DMG_SALT); }
+          if(p >= 1){ e.el.remove(); e.state = 3; }
+        }
+      } else if(e.type === 'saltAim'){
+        const cx = W/2, cy = W/2, len = 0.75*W, segLen = 0.3*W;
+        if(e.state === 0){
+          e.el = mkFx('fx-aimwarn');
+          e.el.style.left = cx + 'px'; e.el.style.top = cy + 'px'; e.el.style.width = len + 'px';
+          e.ang = Math.atan2(f.py - cy, f.px - cx);
+          e.state = 1;
+        }
+        if(e.state === 1){
+          if(te < e.warn - 0.4) e.ang = Math.atan2(f.py - cy, f.px - cx);   // tracks the player, then locks in
+          e.el.style.transform = `rotate(${e.ang}rad)`;
+          if(te >= e.warn){
+            e.el.remove();
+            e.el = mkFx('fx-aimbeam');
+            e.el.style.left = cx + 'px'; e.el.style.top = cy + 'px'; e.el.style.width = segLen + 'px';
+            e.state = 2;
+          }
+        }
+        if(e.state === 2){
+          const p = (te - e.warn) / e.travel, d = p * (len + segLen);
+          e.el.style.transform = `rotate(${e.ang}rad) translateX(${d}px)`;
+          const ux = Math.cos(e.ang), uy = Math.sin(e.ang);
+          if(!e.hit && distToSeg(f.px, f.py, cx + ux*d, cy + uy*d, cx + ux*(d+segLen), cy + uy*(d+segLen)) < 16){
+            e.hit = true; hurtPlayer(BOSS_DMG_SALT);
+          }
+          if(p >= 1){ e.el.remove(); e.state = 3; }
+        }
+      } else if(e.type === 'spike'){
+        const D = SPIKE_DEPTH;
+        if(e.state === 0){
+          const r = wallRect(e.wall, W, D);
+          e.el = mkFx('fx-spikewarn');
+          e.el.style.left = r.l + 'px'; e.el.style.top = r.t + 'px'; e.el.style.width = r.w + 'px'; e.el.style.height = r.h + 'px';
+          e.state = 1;
+        }
+        if(e.state === 1 && te >= e.warn){
+          e.el.remove();
+          e.el = mkFx('fx-spikes');
+          e.el.innerHTML = spikeSvg(e.wall, W, D);
+          e.el.style.transformOrigin = ['50% 0','50% 100%','0 50%','100% 50%'][e.wall];
+          e.el.style.animation = (e.wall < 2 ? 'spkY' : 'spkX') + ' .25s ease-out';
+          e.state = 2;
+        }
+        if(e.state === 2){
+          const inWall = [f.py - 10 < D, W - f.py - 10 < D, f.px - 10 < D, W - f.px - 10 < D][e.wall];
+          if(inWall && te >= e.warn + 0.25) hurtPlayer(SPIKE_DMG);
+          if(te >= e.warn + e.dur){ e.el.remove(); e.state = 3; }
+        }
+      } else if(e.type === 'servant'){
+        const bx = W/2, by = W/2;
+        if(e.state === 0){
+          const edge = randInt(0,3), m = rnd(0.2*W, 0.8*W);
+          if(edge === 0){ e.sx = m; e.sy = -26; e.tx = m; e.ty = 28; }
+          else if(edge === 1){ e.sx = m; e.sy = W+26; e.tx = m; e.ty = W-28; }
+          else if(edge === 2){ e.sx = -26; e.sy = m; e.tx = 28; e.ty = m; }
+          else { e.sx = W+26; e.sy = m; e.tx = W-28; e.ty = m; }
+          e.x = e.sx; e.y = e.sy;
+          e.el = mkFx('fx-boar');
+          e.el.innerHTML = '<div class="monster-hp-track"><div class="monster-hp-fill"></div></div><span>🧿</span>';
+          e.el.style.textShadow = '0 0 8px rgba(181,123,255,.9)';
+          e.hpEl = e.el.querySelector('.monster-hp-fill');
+          e.el.style.opacity = 0;
+          e.state = 1;
+        }
+        e.modeT += dt;
+        e.atkCd = Math.max(0, e.atkCd - dt);
+        if(e.mode === 'enter'){
+          const k = Math.min(1, e.modeT / 1.2);
+          e.x = e.sx + (e.tx - e.sx) * k; e.y = e.sy + (e.ty - e.sy) * k;
+          e.el.style.opacity = k;
+          if(k >= 1) e.mode = 'walk';
+        } else {
+          const vx = bx - e.x, vy = by - e.y, vd = Math.hypot(vx, vy) || 1;
+          const sp = 0.075 * W;                          // slow walk toward the eye
+          e.x += vx / vd * sp * dt; e.y += vy / vd * sp * dt;
+          if(vd <= BOSS_R + 14){                          // reached the boss: heals it
+            boss.hp2 = Math.min(BOSS_MAX_HP, boss.hp2 + BOSS_MAX_HP * SERVANT_HEAL);
+            updateBossHp2();
+            ritualFlash('+20% HEAL');
+            e.el.remove(); e.state = 3;
+            boss.p2.servantAlive = false;
+            continue;
+          }
+        }
+        e.el.style.left = e.x + 'px'; e.el.style.top = e.y + 'px';
+        if(e.mode !== 'enter' && e.atkCd === 0 && Math.hypot(f.px - e.x, f.py - e.y) <= ATTACK_RANGE/100 * W){
+          e.atkCd = ATTACK_INTERVAL / 1000;
+          e.hp = Math.max(0, e.hp - currentPlayerDamage());
+          e.hpEl.style.width = (e.hp / e.maxHp * 100) + '%';
+        }
+        if(e.hp <= 0){
+          e.el.remove(); e.state = 3;
+          boss.p2.servantAlive = false;
+        }
+      } else if(e.type === 'boar'){
+        if(e.state === 0){
+          const edge = randInt(0,3), m = rnd(0.2*W, 0.8*W);
+          if(edge === 0){ e.sx = m; e.sy = -26; e.tx = m; e.ty = 28; }
+          else if(edge === 1){ e.sx = m; e.sy = W+26; e.tx = m; e.ty = W-28; }
+          else if(edge === 2){ e.sx = -26; e.sy = m; e.tx = 28; e.ty = m; }
+          else { e.sx = W+26; e.sy = m; e.tx = W-28; e.ty = m; }
+          e.x = e.sx; e.y = e.sy;
+          e.el = mkFx('fx-boar');
+          e.el.innerHTML = '<div class="monster-hp-track"><div class="monster-hp-fill"></div></div><span>🐗</span>';
+          e.hpEl = e.el.querySelector('.monster-hp-fill');
+          e.el.style.opacity = 0;
+          e.state = 1;
+        }
+        e.modeT += dt;
+        e.atkCd = Math.max(0, e.atkCd - dt);
+        if(e.mode === 'enter'){
+          const k = Math.min(1, e.modeT / 1.2);
+          e.x = e.sx + (e.tx - e.sx) * k; e.y = e.sy + (e.ty - e.sy) * k;
+          e.el.style.opacity = k;
+          if(k >= 1){ e.mode = 'windup'; e.modeT = 0; }
+        } else if(e.mode === 'windup'){
+          if(!e.line) e.line = mkFx('fx-boarline');
+          if(e.modeT < 0.9) e.ang = Math.atan2(f.py - e.y, f.px - e.x);      // aims, then commits
+          e.line.style.left = e.x + 'px'; e.line.style.top = e.y + 'px'; e.line.style.width = (1.3*W) + 'px';
+          e.line.style.transform = `rotate(${e.ang}rad)`;
+          if(e.modeT >= 1.2){
+            e.line.remove(); e.line = null;
+            e.dx = Math.cos(e.ang); e.dy = Math.sin(e.ang);
+            e.mode = 'charge'; e.modeT = 0; e.hit = false;
+          }
+        } else if(e.mode === 'charge'){
+          const sp = 1.15 * W;
+          e.x += e.dx * sp * dt; e.y += e.dy * sp * dt;
+          if(!e.hit && Math.hypot(f.px - e.x, f.py - e.y) < 24){ e.hit = true; hurtPlayer(BOAR_CHARGE_DMG); }
+          if(e.x < 15 || e.x > W-15 || e.y < 15 || e.y > W-15){
+            e.x = Math.min(W-15, Math.max(15, e.x)); e.y = Math.min(W-15, Math.max(15, e.y));
+            e.mode = 'stun'; e.modeT = 0;
+          }
+        } else if(e.mode === 'stun'){
+          if(e.modeT >= 3.0){ e.mode = 'windup'; e.modeT = 0; }
+        }
+        e.el.style.left = e.x + 'px'; e.el.style.top = e.y + 'px';
+        // the player punches whatever is close
+        if(e.mode !== 'enter' && e.atkCd === 0 && Math.hypot(f.px - e.x, f.py - e.y) <= ATTACK_RANGE/100 * W){
+          e.atkCd = ATTACK_INTERVAL / 1000;
+          e.hp = Math.max(0, e.hp - currentPlayerDamage());
+          e.hpEl.style.width = (e.hp / e.maxHp * 100) + '%';
+        }
+        if(e.hp <= 0){
+          if(e.line) e.line.remove();
+          e.el.remove(); e.state = 3;
+          boss.p2.boarAlive = false;
+          boss.p2.boar = rnd(10, 16);
+        }
+      }
+    }
+    if(boss.p2) f.events = f.events.filter(e => e.state !== 3);
+    if(active === 0 && !boss.p2){
+      f.doneT += dt;
+      if(f.doneT > 0.6){
+        boss.phase = 'transition';
+        ritualFx.innerHTML = '';
+        ritualJoyBase.style.display = 'none';
+        rJoy.x = 0; rJoy.y = 0;
+        setTimeout(beginStrike, 500);
+      }
+    }
+  }
+
+  ritualActionBtn.addEventListener('click', ()=>{
+    if(!boss) return;
+    if(boss.phase === 'dialogue'){
+      boss.line++;
+      if(boss.line >= BOSS_LINES.length){
+        ritualActionBtn.style.display = 'none';
+        beginStrike();
+      } else showBossLine();
+    } else if(boss.phase === 'strike'){
+      doStrike();
+    }
+  });
+
+  let rJoyActive = false, rJoyCx = 0, rJoyCy = 0;
+  function rJoyMove(clientX, clientY){
+    const dx = clientX - rJoyCx, dy = clientY - rJoyCy;
+    const maxR = 36;
+    const d = Math.min(maxR, Math.hypot(dx, dy));
+    const angle = Math.atan2(dy, dx);
+    const kx = Math.cos(angle) * d, ky = Math.sin(angle) * d;
+    ritualJoyKnob.style.transform = `translate(${kx}px, ${ky}px)`;
+    rJoy.x = kx / maxR; rJoy.y = ky / maxR;
+  }
+  ritualJoyBase.addEventListener('pointerdown', e=>{
+    e.preventDefault();
+    rJoyActive = true;
+    const rect = ritualJoyBase.getBoundingClientRect();
+    rJoyCx = rect.left + rect.width/2;
+    rJoyCy = rect.top + rect.height/2;
+    rJoyMove(e.clientX, e.clientY);
+  });
+  window.addEventListener('pointermove', e=>{ if(rJoyActive) rJoyMove(e.clientX, e.clientY); });
+  window.addEventListener('pointerup', ()=>{
+    rJoyActive = false;
+    ritualJoyKnob.style.transform = 'translate(0,0)';
+    rJoy.x = 0; rJoy.y = 0;
+  });
+
+  const devBtn = el('devBtn');
+  devBtn.addEventListener('click', ()=>{
+    devMode = !devMode;
+    devBtn.classList.toggle('on', devMode);
+    devBtn.textContent = 'DEV: free crafts [' + (devMode ? 'ON' : 'OFF') + ']';
+    if(devMode && !state.alchemyUnlocked) unlockAlchemy();
+    renderCrafting();
+    renderAlchemy();
+  });
+
+  /* ---------- expedition: location select ---------- */
+  function renderLocGrid(){
+    locGrid.innerHTML = '';
+    ZONES.forEach(z=>{
+      const card = document.createElement('div');
+      card.className = 'loc-card';
+      card.innerHTML = `<div class="loc-bg">${z.icon}</div>
+        <div class="loc-shade"></div>
+        <div class="loc-name">${z.icon} ${z.name}</div>
+        <div class="loc-blurb">${z.blurb}</div>
+        ${z.food ? '' : '<div class="loc-food-note">no food sources here</div>'}`;
+      card.addEventListener('click', ()=> enterSearch(z.id));
+      locGrid.appendChild(card);
+    });
+  }
+
+  function showLocationSelect(){
+    cancelHold();
+    state.sessionFinds = {};
+    expeditionSearch.style.display = 'none';
+    expeditionSelect.style.display = '';
+  }
+
+  function enterSearch(zoneId){
+    state.zone = zoneId;
+    state.sessionFinds = {};
+    const z = ZONES.find(zz=>zz.id===zoneId);
+    searchZoneName.textContent = z.icon + ' ' + z.name;
+    searchZoneBlurb.textContent = z.blurb + (zoneId === 'cave' && !isEquipped('pickaxe')
+      ? ' Without a Pickaxe equipped, only mushrooms can be found here.' : '');
+    renderChanceGrid();
+    renderFoundGrid();
+    cancelHold();
+    expeditionSelect.style.display = 'none';
+    expeditionSearch.style.display = '';
+  }
+
+  function isEquipped(id){
+    return Object.values(state.equipped).includes(id);
+  }
+  function zonePool(zone){
+    return RESOURCES.filter(r => r.zone === zone && !r.dropOnly);
+  }
+  function canExtract(r){
+    return !(r.zone === 'cave' && r.id !== 'mushroom' && !isEquipped('pickaxe'));
+  }
+  
+  const MONSTERS = {
+    boar: { id:'boar', name:'Boar', icon:'🐗', zone:'forest', spawnChance:0.05, hp:100, armor:0, attack:8,
+      minCount:1, maxCount:1, drop:{ id:'hide', chance:1, minQty:1, maxQty:4 } },
+    spider: { id:'spider', name:'Spider', icon:'🕷️', zone:'cave', spawnChance:0.05, hp:25, armor:0, attack:5, poisonChance:0.25,
+      minCount:1, maxCount:5, drop:{ id:'fang', chance:0.15, minQty:1, maxQty:1 } },
+    snowflake: { id:'snowflake', name:'Snowflake', icon:'❄️', zone:'peaks', spawnChance:0.05, hp:75, armor:0, attack:5,
+      slowDebuff:true, minCount:1, maxCount:1, drop:{ id:'icicle', chance:1, minQty:1, maxQty:2 } },
+    darkooze: { id:'darkooze', name:'Dark Ooze', icon:'🟣', zone:'ruins', spawnChance:0.05, hp:250, armor:0, attack:10,
+      minCount:1, maxCount:1, drop:{ id:'vial', chance:0.15, minQty:1, maxQty:1 },
+      split: { count:2, hp:125, attack:3, split:{ count:2, hp:50, attack:1, split:null } } }
+  };
+  const PLAYER_DAMAGE = 20;      // fist damage per hit, once per second while in range
+  function currentPlayerDamage(){
+    let dmg = PLAYER_DAMAGE;
+    ['lhand','rhand'].forEach(slot=>{
+      const id = state.equipped[slot];
+      if(id) dmg += itemDamage(id);
+    });
+    return dmg;
+  }
+  const ATTACK_INTERVAL = 1000;  // ms between auto-attack ticks for both sides
+  const ATTACK_RANGE = 14;       // % of field size — how close units need to be to fight
+  const PLAYER_SPEED = 60;       // % of field per second at full joystick deflection
+  const MONSTER_SPEED = 26;      // % of field per second, monster homes in slower than the player
+  const FLEE_MARGIN = 12;        // % beyond the field edge before an escape counts
+  const HEAL_RATE_PER_SEC = 5;   // Herbal Salve heals this % of max health per second
+  const POISON_RATE_PER_SEC = 3; // poison drains this % of max health per second
+  const POISON_DURATION = 5;     // seconds of poison per application (refreshes, doesn't stack)
+  const SLOW_DEBUFF_MULT = 1.5;  // hold cycles take 50% longer while slowed
+  const SLOW_MIN = 3, SLOW_MAX = 10; // number of upcoming search cycles affected per hit
+
+  function renderChanceGrid(){
+    const pool = zonePool(state.zone);
+    const total = pool.reduce((s,r)=>s+r.weight,0);
+    chanceGrid.innerHTML = pool.map(r=>{
+      const pct = Math.round(r.weight/total*100);
+      const locked = !canExtract(r) ? ' 🔒' : '';
+      return `<div class="chance-cell"><span class="c-icon">${r.icon}</span><span>${r.name}${locked}</span><span class="c-pct">${pct}%</span></div>`;
+    }).join('');
+  }
+
+  function renderFoundGrid(){
+    const ids = Object.keys(state.sessionFinds);
+    foundGrid.innerHTML = ids.length
+      ? ids.map(id=>`<div class="chance-cell pickup" data-id="${id}"><span class="c-icon">${itemIcon(id)}</span><span>${itemName(id)}</span><span class="c-pct">x${state.sessionFinds[id]}</span></div>`).join('')
+      : '<div class="empty-note span2">nothing found yet this trip</div>';
+    foundGrid.querySelectorAll('.pickup').forEach(cell=>{
+      cell.addEventListener('click', ()=>{
+        const id = cell.dataset.id;
+        const qty = state.sessionFinds[id];
+        const addedMass = qty * itemMass(id);
+        if(totalCarriedWeight() + addedMass > effectiveMaxWeight()){
+          searchMsg.textContent = `Too heavy to carry ${itemName(id)} — drop weight first.`;
+          return;
+        }
+        addItem(id, qty);
+        delete state.sessionFinds[id];
+        renderFoundGrid();
+      });
+    });
+  }
+
+  backBtn.addEventListener('click', showLocationSelect);
+
+  function weightedPick(list){
+    const total = list.reduce((s,r)=>s+r.weight,0);
+    let roll = Math.random()*total;
+    for(const r of list){ roll -= r.weight; if(roll <= 0) return r; }
+    return list[list.length-1];
+  }
+
+  function addItem(id, qty){
+    state.inventory[id] = (state.inventory[id]||0) + qty;
+    updateBagCount();
+    updateWeightUI();
+  }
+
+  function unlockAlchemy(){
+    state.alchemyUnlocked = true;
+    alchemyTabBtn.classList.remove('locked');
+    alchemyTabBtn.textContent = 'Alchemy';
+    renderAlchemy();
+    renderCrafting();
+  }
+
+  /* ---------- developer mode: free crafts ---------- */
+  let devMode = false;
+  function hasNeeds(r){ return devMode || Object.entries(r.needs).every(([id,qty]) => (state.inventory[id]||0) >= qty); }
+  function payNeeds(r){ if(devMode) return; Object.entries(r.needs).forEach(([id,qty])=>{ state.inventory[id] -= qty; }); }
+
+  function renderAlchemy(){
+    if(!state.alchemyUnlocked){
+      alchemyContent.innerHTML = `<div class="empty-note">Locked — find the Unknown Recipe in the Ruins and study it to unlock the Alchemy Table.</div>`;
+      return;
+    }
+    if(state.alchemyTableBuilt){
+      renderAlchemyRecipes();
+      return;
+    }
+    const r = RECIPE_BY_ID['alchemytable'];
+    const entries = Object.entries(r.needs);
+    const n = entries.length;
+    const chips = entries.map(([id,qty], i)=>{
+      const angle = (180 - i * (180/(n-1))) * Math.PI/180;
+      const x = 50 + 46 * Math.cos(angle);
+      const y = 100 - 85 * Math.sin(angle);
+      const have = state.inventory[id] || 0;
+      return `<div class="arc-chip ${(devMode||have>=qty)?'ok':''}" style="left:${x}%; top:${y}%">
+        <div class="arc-icon">${itemIcon(id)}</div>
+        <div class="arc-qty">${have}/${qty}</div>
+      </div>`;
+    }).join('');
+    alchemyContent.innerHTML = `
+      <div class="recipe-desc" style="margin-bottom:10px">${r.name} — ${r.desc}</div>
+      <div class="alchemy-arc">${chips}</div>
+      <div class="craft-bar" id="craftBar">
+        <div class="craft-bar-fill" id="craftBarFill"></div>
+        <div class="craft-bar-label" id="craftBarLabel">HOLD TO BUILD</div>
+      </div>`;
+  }
+
+  function renderAlchemyRecipes(){
+    const tableRecipes = RECIPES.filter(r => r.table);
+    const doneNote = (state.inventory.voidsyrup > 0)
+      ? `<div class="recipe-desc" style="margin-bottom:12px">You've brewed the Void Syrup — the culmination of everything you've gathered.</div>`
+      : '';
+    alchemyContent.innerHTML = doneNote + `<div id="alchemyRecipeList"></div>`;
+    const list = document.getElementById('alchemyRecipeList');
+    tableRecipes.forEach(r=>{
+      const card = document.createElement('div');
+      card.className = 'recipe';
+      const needsHtml = Object.entries(r.needs).map(([id,qty])=>{
+        const have = state.inventory[id] || 0;
+        const cls = (devMode || have >= qty) ? 'ok' : 'low';
+        return `<span class="need-tag ${cls}">${itemIcon(id)} ${itemName(id)} ${have}/${qty}</span>`;
+      }).join('');
+      const canCraft = hasNeeds(r);
+      card.innerHTML = `
+        <div class="recipe-head"><span class="recipe-icon">${r.icon}</span><span class="recipe-name">${r.name}</span></div>
+        <div class="recipe-desc">${r.desc}</div>
+        <div class="recipe-needs">${needsHtml}</div>
+        <button class="btn" ${canCraft ? '' : 'disabled'}>${r.isFinal ? 'Brew' : 'Craft'}</button>`;
+      card.querySelector('.btn').addEventListener('click', ()=>{
+        payNeeds(r);
+        addItem(r.id, 1);
+        renderAlchemyRecipes();
+        renderInventory();
+      });
+      list.appendChild(card);
+    });
+  }
+
+  const CRAFT_HOLD_MS = 2500;
+  let alchemyHolding = false, alchemyProgress = 0, alchemyRaf = null, alchemyLastT = 0;
+
+  function alchemyCanBuild(){
+    const r = RECIPE_BY_ID['alchemytable'];
+    return !state.alchemyTableBuilt && hasNeeds(r);
+  }
+  function alchemyStart(){
+    if(alchemyHolding || !alchemyCanBuild()) return;
+    alchemyHolding = true;
+    alchemyProgress = 0;
+    alchemyLastT = performance.now();
+    const label = document.getElementById('craftBarLabel');
+    if(label) label.textContent = 'BUILDING…';
+    alchemyRaf = requestAnimationFrame(alchemyLoop);
+  }
+  function alchemyLoop(now){
+    if(!alchemyHolding) return;
+    const dt = now - alchemyLastT;
+    alchemyLastT = now;
+    alchemyProgress += dt / CRAFT_HOLD_MS;
+    const fill = document.getElementById('craftBarFill');
+    if(fill) fill.style.width = Math.min(100, alchemyProgress*100) + '%';
+    if(alchemyProgress >= 1){
+      const r = RECIPE_BY_ID['alchemytable'];
+      payNeeds(r);
+      state.alchemyTableBuilt = true;
+      alchemyHolding = false;
+      updateWeightUI();
+      renderInventory();
+      renderAlchemy();
+      return;
+    }
+    alchemyRaf = requestAnimationFrame(alchemyLoop);
+  }
+  function alchemyCancel(){
+    alchemyHolding = false;
+    alchemyProgress = 0;
+    if(alchemyRaf) cancelAnimationFrame(alchemyRaf);
+    alchemyRaf = null;
+    const fill = document.getElementById('craftBarFill');
+    if(fill) fill.style.width = '0%';
+    const label = document.getElementById('craftBarLabel');
+    if(label) label.textContent = 'HOLD TO BUILD';
+  }
+  alchemyContent.addEventListener('pointerdown', e=>{
+    if(e.target.closest('#craftBar')){ e.preventDefault(); alchemyStart(); }
+  });
+  window.addEventListener('pointerup', alchemyCancel);
+  window.addEventListener('pointercancel', alchemyCancel);
+
+  function updateWeightUI(){
+    const w = totalCarriedWeight();
+    const cap = effectiveMaxWeight();
+    const pct = Math.min(100, (w / cap) * 100);
+    wgtFill.style.width = pct + '%';
+    wgtFill.classList.toggle('low', pct >= 90);
+    wgtVal.textContent = w.toFixed(1) + ' / ' + cap + ' kg';
+  }
+
+  function updateBagCount(){
+    const total = Object.values(state.inventory).reduce((a,b)=>a+b,0);
+    bagCount.textContent = '(' + total + ' items)';
+  }
+
+  function grantFind(){
+    const pool = zonePool(state.zone);
+    const found = weightedPick(pool);
+    if(!canExtract(found)){
+      searchMsg.textContent = `You can't break that loose without a Pickaxe — the attempt cost you anyway.`;
+      renderFoundGrid();
+      return;
+    }
+    const qty = found.rarity === 'rare' ? 1 : (found.rarity === 'uncommon' ? 1 : (1 + (Math.random()<0.3?1:0)));
+    state.sessionFinds[found.id] = (state.sessionFinds[found.id]||0) + qty;
+
+    Object.values(state.equipped).forEach(id=>{
+      const luck = itemLuck(id);
+      if(luck > 0 && Math.random() < luck){
+        const bonus = weightedPick(pool);
+        if(canExtract(bonus)){
+          state.sessionFinds[bonus.id] = (state.sessionFinds[bonus.id]||0) + 1;
+        }
+      }
+    });
+    renderFoundGrid();
+  }
+
+  function currentEnergyCost(){
+    return isOverloaded() ? ENERGY_COST * 2 : ENERGY_COST;
+  }
+  function currentHoldMs(){
+    let ms = isOverloaded() ? HOLD_MS * 2 : HOLD_MS;
+    if(state.zone === 'cave' && isEquipped('pickaxe')) ms *= 0.6;
+    if(state.equipped.boots) ms *= itemSpeedMult(state.equipped.boots);
+    if(state.slowSearchesRemaining > 0) ms *= SLOW_DEBUFF_MULT;
+    return ms;
+  }
+
+  function canRunCycle(){
+    return state.stats.health > 0 && state.stats.energy >= currentEnergyCost() && state.stats.food >= FOOD_COST;
+  }
+
+  function blockedMessage(){
+    if(state.stats.health <= 0) return 'Too weak to search — eat and recover first.';
+    if(state.stats.food < FOOD_COST) return 'Out of food — nothing left to burn for energy.';
+    return 'Out of energy — find food, energy refills while you eat.';
+  }
+
+  let rafId = null;
+  function startHold(){
+    if(state.holding || !state.zone) return;
+    if(!canRunCycle()){ searchMsg.textContent = blockedMessage(); return; }
+    state.holding = true;
+    state.progress = 0;
+    state.lastT = performance.now();
+    searchBtn.classList.add('active');
+    searchBtn.innerHTML = 'Searching<br>&hellip;';
+    rafId = requestAnimationFrame(holdLoop);
+  }
+  function holdLoop(now){
+    if(!state.holding) return;
+    const dt = now - state.lastT;
+    state.lastT = now;
+    state.progress += dt / currentHoldMs();
+    if(state.progress >= 1){
+      if(!canRunCycle()){
+        const msg = blockedMessage();
+        cancelHold();
+        searchMsg.textContent = msg;
+        return;
+      }
+      state.progress -= 1;
+      state.stats.energy -= currentEnergyCost();
+      state.stats.food -= FOOD_COST;
+      if(state.slowSearchesRemaining > 0) state.slowSearchesRemaining -= 1;
+      updateStatsUI();
+      const ambush = maybeSpawnMonster();
+      if(ambush){
+        cancelHold();
+        startBattle(ambush);
+        return;
+      }
+      grantFind();
+    }
+    ringFg.setAttribute('stroke-dashoffset', CIRC * (1 - state.progress));
+    rafId = requestAnimationFrame(holdLoop);
+  }
+  function cancelHold(){
+    state.holding = false;
+    state.progress = 0;
+    if(rafId) cancelAnimationFrame(rafId);
+    ringFg.setAttribute('stroke-dashoffset', CIRC);
+    searchBtn.classList.remove('active');
+    searchBtn.innerHTML = 'Hold<br>to search';
+    searchMsg.textContent = currentHint();
+  }
+
+  const ring = el('searchRing');
+  ring.addEventListener('pointerdown', e=>{ e.preventDefault(); startHold(); });
+  window.addEventListener('pointerup', cancelHold);
+  window.addEventListener('pointercancel', cancelHold);
+  ring.addEventListener('contextmenu', e=>e.preventDefault());
+
+  /* ---------- inventory ---------- */
+  function renderInventory(){
+    const ids = Object.keys(state.inventory).filter(id => state.inventory[id] > 0);
+    invList.innerHTML = ids.length ? '' : '<div class="empty-note-full">nothing gathered yet — try an expedition</div>';
+    ids.sort((a,b) => itemName(a).localeCompare(itemName(b))).forEach(id=>{
+      const isCrafted = !!RECIPE_BY_ID[id];
+      const res = RES_BY_ID[id];
+      const tag = isCrafted ? 'crafted' : ZONES.find(z=>z.id===res.zone).name;
+      const massTxt = itemMass(id).toFixed(2) + 'kg ea';
+      const badgeParts = [];
+      if(itemArmor(id)) badgeParts.push(`🛡${itemArmor(id)}`);
+      if(itemLuck(id)) badgeParts.push(`🎲${Math.round(itemLuck(id)*100)}%`);
+      if(itemSpeedMult(id) !== 1) badgeParts.push(`⚡${Math.round((1-itemSpeedMult(id))*100)}%`);
+      if(itemCapacity(id)) badgeParts.push(`🎒+${itemCapacity(id)}`);
+      const badges = badgeParts.length ? ' · ' + badgeParts.join(' ') : '';
+      const eatBtn = (res && res.food) ? `<button class="eat-btn" data-id="${id}">Eat +${res.food}</button>` : '';
+      const equipBtn = itemSlots(id).length > 0 ? `<button class="equip-btn" data-id="${id}">Equip</button>` : '';
+      const healBtn = itemHeal(id) > 0 ? `<button class="heal-btn" data-id="${id}">Use</button>` : '';
+      const studyBtn = (itemUnlocks(id) && !state.alchemyUnlocked) ? `<button class="study-btn" data-id="${id}">Study</button>` : '';
+      const useBtn = (id === 'voidsyrup') ? `<button class="use-btn" data-id="${id}">Apply</button>` : '';
+      const row = document.createElement('div');
+      row.className = 'inv-row';
+      row.dataset.id = id;
+      row.innerHTML = `<div class="inv-icon">${itemIcon(id)}</div>
+        <div class="inv-info"><div class="inv-name">${itemName(id)}</div><div class="inv-zone">${tag} · ${massTxt}${badges}</div></div>
+        <div class="inv-qty">x${state.inventory[id]}</div>${eatBtn}${equipBtn}${healBtn}${studyBtn}${useBtn}
+        <button class="discard-btn" data-id="${id}">Discard</button>`;
+      invList.appendChild(row);
+    });
+    invList.querySelectorAll('.study-btn').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        const unlockKey = itemUnlocks(id);
+        state.inventory[id] -= 1;
+        if(state.inventory[id] <= 0) delete state.inventory[id];
+        if(unlockKey === 'alchemy') unlockAlchemy();
+        updateBagCount();
+        updateWeightUI();
+        renderInventory();
+      });
+    });
+    invList.querySelectorAll('.heal-btn').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        state.inventory[id] -= 1;
+        if(state.inventory[id] <= 0) delete state.inventory[id];
+        state.healTicksRemaining = (state.healTicksRemaining||0) + (itemHeal(id) / HEAL_RATE_PER_SEC);
+        updateBagCount();
+        updateWeightUI();
+        renderInventory();
+      });
+    });
+    invList.querySelectorAll('.equip-btn').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        const slots = itemSlots(id);
+        if(!slots.length) return;
+        const slot = slots.find(s => !state.equipped[s]) || slots[0];
+        const prev = state.equipped[slot];
+        if(prev){
+          state.stats.armor = Math.max(0, state.stats.armor - itemArmor(prev));
+          addItem(prev, 1);
+        }
+        state.equipped[slot] = id;
+        state.stats.armor = Math.min(state.stats.maxArmor, state.stats.armor + itemArmor(id));
+        state.inventory[id] -= 1;
+        if(state.inventory[id] <= 0) delete state.inventory[id];
+        updateStatsUI();
+        updateBagCount();
+        updateWeightUI();
+        renderEquipRow();
+        renderInventory();
+      });
+    });
+    invList.querySelectorAll('.eat-btn').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        const restore = RES_BY_ID[id].food;
+        state.inventory[id] -= 1;
+        if(state.inventory[id] <= 0) delete state.inventory[id];
+        state.stats.food = Math.min(state.stats.maxFood, state.stats.food + restore);
+        updateStatsUI();
+        updateBagCount();
+        updateWeightUI();
+        renderInventory();
+      });
+    });
+    invList.querySelectorAll('.use-btn').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        startRitual();
+      });
+    });
+    invList.querySelectorAll('.inv-row').forEach(row=>{
+      row.addEventListener('click', (e)=>{
+        if(e.target.closest('.eat-btn') || e.target.closest('.discard-btn')) return;
+        invList.querySelectorAll('.inv-row').forEach(r=>{ if(r!==row) r.classList.remove('open'); });
+        row.classList.toggle('open');
+      });
+    });
+    invList.querySelectorAll('.discard-btn').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        delete state.inventory[id];
+        updateBagCount();
+        updateWeightUI();
+        renderInventory();
+      });
+    });
+  }
+
+  /* ---------- crafting ---------- */
+  function renderCrafting(){
+    recipeList.innerHTML = '';
+    RECIPES.forEach(r=>{
+      if(r.id === 'alchemytable' || r.table) return;
+      if(r.requiresUnlock === 'alchemy' && !state.alchemyUnlocked) return;
+      if(r.isStructure && state.alchemyTableBuilt) return;
+      const card = document.createElement('div');
+      card.className = 'recipe';
+      const needsHtml = Object.entries(r.needs).map(([id,qty])=>{
+        const have = state.inventory[id] || 0;
+        const cls = (devMode || have >= qty) ? 'ok' : 'low';
+        return `<span class="need-tag ${cls}">${itemIcon(id)} ${itemName(id)} ${have}/${qty}</span>`;
+      }).join('');
+      const canCraft = hasNeeds(r);
+      const buffLines = [];
+      if(r.armor) buffLines.push(`Blocks ${r.armor}% of incoming damage while worn.`);
+      if(r.luck) buffLines.push(`${Math.round(r.luck*100)}% chance per cycle of a bonus find while worn.`);
+      if(r.speedMult && r.speedMult !== 1) buffLines.push(`${Math.round((1-r.speedMult)*100)}% faster searching while worn.`);
+      if(r.capacity) buffLines.push(`+${r.capacity} kg carry capacity while worn.`);
+      if(r.heal) buffLines.push(`Heals ${r.heal}% health, ${HEAL_RATE_PER_SEC}%/sec.`);
+      if(r.buffDesc) buffLines.push(r.buffDesc);
+      const armorTag = buffLines.map(l => `<div class="recipe-desc">${l}</div>`).join('');
+      card.innerHTML = `
+        <div class="recipe-head"><span class="recipe-icon">${r.icon}</span><span class="recipe-name">${r.name}</span></div>
+        <div class="recipe-desc">${r.desc}</div>
+        ${armorTag}
+        <div class="recipe-needs">${needsHtml}</div>
+        <button class="btn" ${canCraft ? '' : 'disabled'}>${r.isStructure ? 'Build' : 'Craft'}</button>`;
+      card.querySelector('.btn').addEventListener('click', ()=>{
+        payNeeds(r);
+        if(r.isStructure){
+          state.alchemyTableBuilt = true;
+          renderAlchemy();
+        } else {
+          addItem(r.id, 1);
+        }
+        updateWeightUI();
+        renderCrafting();
+        renderInventory();
+      });
+      recipeList.appendChild(card);
+    });
+  }
+
+  /* ---------- init ---------- */
+  renderLocGrid();
+  renderEquipRow();
+  renderAlchemy();
+  showLocationSelect();
+  setTab('inventory');
+  updateBagCount();
+  updateWeightUI();
+  updateStatsUI();
+})();
+</script>
+</body>
+</html>
